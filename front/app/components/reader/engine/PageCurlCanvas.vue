@@ -290,6 +290,9 @@ const offscreenPageRef = ref<HTMLElement | null>(null)
 // Canvases Offscreen para Texturização WebGL
 let frontOffscreenCanvas: HTMLCanvasElement | null = null
 let backOffscreenCanvas: HTMLCanvasElement | null = null
+let offscreenRenderQueue: Promise<void> = Promise.resolve()
+let dragActivationToken = 0
+let texturePreparationVersion = 0
 
 // Engine Three.js 3D
 const pageCurl3D = usePageCurl3D(webglCanvasRef)
@@ -558,6 +561,12 @@ async function renderPageToCanvasTexture(
   // 3. Renderização offscreen fiel do verso ou página não visível via doc.renderTextLayer
   if ((doc.type === 'epub' || doc.type === 'didactic') && typeof doc.renderTextLayer === 'function') {
     if (offscreenPageRef.value) {
+      const previousRender = offscreenRenderQueue
+      let releaseRender!: () => void
+      offscreenRenderQueue = new Promise<void>((resolve) => {
+        releaseRender = resolve
+      })
+      await previousRender
       try {
         offscreenPageRef.value.style.width = `${width}px`
         offscreenPageRef.value.style.height = `${height}px`
@@ -573,6 +582,8 @@ async function renderPageToCanvasTexture(
         if (drawn) return
       } catch {
         // continua para fallback se renderTextLayer falhar
+      } finally {
+        releaseRender()
       }
     }
   }
@@ -714,7 +725,6 @@ async function renderCurrentSpread(pageOverride?: number): Promise<void> {
       )
     }
     await Promise.all(renders)
-    void prewarm3DTextures('next')
   } else if (layout.singlePage && curPage > 0) {
     await renderPageToElement(
       curPage,
@@ -723,208 +733,72 @@ async function renderCurrentSpread(pageOverride?: number): Promise<void> {
       layout.singlePage.width,
       layout.singlePage.height,
     )
-    void prewarm3DTextures('next')
   }
 }
 
 /**
  * Prepara as texturas e o setup Three.js de forma instantânea e robusta com texto garantido
  */
-function prepare3DTextures(direction: PageTurnDirection, gripY = 0.5) {
+async function prepare3DTextures(direction: PageTurnDirection, gripY = 0.5): Promise<void> {
   if (!store.document) return
+  const preparationVersion = ++texturePreparationVersion
   currentDirection.value = direction
 
   const layout = pageLayout.value
-  const curPage = store.currentPage
   const total = store.totalPages
-
+  const current = store.currentPage
+  const isTwoPage = layout.isTwoPage
+  const pageW = isTwoPage
+    ? (layout.rightPage?.width ?? layout.leftPage?.width ?? 400)
+    : (layout.singlePage?.width ?? 400)
+  const pageH = isTwoPage
+    ? (layout.rightPage?.height ?? layout.leftPage?.height ?? 600)
+    : (layout.singlePage?.height ?? 600)
   const frontCanvas = getOrCreateOffscreenCanvas('front')
   const backCanvas = getOrCreateOffscreenCanvas('back')
 
-  if (layout.isTwoPage) {
-    const curLeft = curPage % 2 !== 0 ? curPage : Math.max(1, curPage - 1)
-    const curRight = curLeft + 1 <= total ? curLeft + 1 : 0
+  const left = current % 2 !== 0 ? current : Math.max(1, current - 1)
+  const frontPage = isTwoPage
+    ? (direction === 'next' ? Math.min(left + 1, total) : left)
+    : current
+  const backPage = isTwoPage
+    ? (direction === 'next' ? left + 2 : left - 1)
+    : (direction === 'next' ? current + 1 : current - 1)
+  const boundedBackPage = backPage >= 1 && backPage <= total ? backPage : 0
+  const sourceText = isTwoPage
+    ? (direction === 'next' ? baseRightTextLayerRef.value : baseLeftTextLayerRef.value)
+    : baseSingleTextLayerRef.value
+  const sourceCanvas = isTwoPage
+    ? (direction === 'next' ? baseRightCanvasRef.value : baseLeftCanvasRef.value)
+    : baseSingleCanvasRef.value
 
-    const pageW = layout.rightPage?.width ?? layout.leftPage?.width ?? 400
-    const pageH = layout.rightPage?.height ?? layout.leftPage?.height ?? 600
+  // Entrega as duas faces ao WebGL como um par. Antes, cada face era atualizada
+  // de forma independente e alguns frames combinavam páginas de viradas distintas.
+  await Promise.all([
+    renderPageToCanvasTexture(frontPage, frontCanvas, pageW, pageH, sourceText, sourceCanvas),
+    renderPageToCanvasTexture(boundedBackPage, backCanvas, pageW, pageH),
+  ])
+  if (preparationVersion !== texturePreparationVersion || !store.document) return
 
-    if (direction === 'next') {
-      const frontPageNum = curRight > 0 ? curRight : curLeft
-      const backPageNum = curLeft + 2 <= total ? curLeft + 2 : 0
-      const nextRight = curLeft + 3 <= total ? curLeft + 3 : 0
+  pageCurl3D.setupScene({ isTwoPage, pageWidth: pageW, pageHeight: pageH, direction })
+  pageCurl3D.setTextures(frontCanvas, backCanvas)
+  pageCurl3D.updateUniforms({
+    progress: 0.001,
+    direction,
+    isTwoPage,
+    gripY,
+    pointerDeltaY: 0,
+    theme: activeTheme.value as any,
+  })
+  pageCurl3D.render()
 
-      // 1. Frente da folha girando: renderiza imediatamente
-      void renderPageToCanvasTexture(
-        frontPageNum,
-        frontCanvas,
-        pageW,
-        pageH,
-        baseRightTextLayerRef.value,
-        baseRightCanvasRef.value,
-      )
-
-      // 2. Verso da folha girando: renderiza assincronamente e atualiza texturas
-      void renderPageToCanvasTexture(
-        backPageNum,
-        backCanvas,
-        pageW,
-        pageH,
-      ).then(() => {
-        pageCurl3D.setTextures(frontCanvas, backCanvas)
-        pageCurl3D.render()
-      })
-
-      // 3. Inicializa a cena 3D e texturas instantaneamente
-      pageCurl3D.setupScene({
-        isTwoPage: true,
-        pageWidth: pageW,
-        pageHeight: pageH,
-        direction: 'next',
-      })
-      pageCurl3D.setTextures(frontCanvas, backCanvas)
-      pageCurl3D.updateUniforms({
-        progress: 0.001,
-        direction: 'next',
-        isTwoPage: true,
-        gripY,
-        pointerDeltaY: 0,
-        theme: activeTheme.value as any,
-      })
-      pageCurl3D.render()
-
-      // 4. Base Direita Revelada: Renderiza a próxima página direita por baixo em background
-      if (nextRight > 0 && layout.rightPage) {
-        void renderPageToElement(nextRight, baseRightCanvasRef.value, baseRightTextLayerRef.value, pageW, pageH)
-      }
-    } else {
-      // PREVIOUS (Two-Page)
-      const frontPageNum = curLeft
-      const backPageNum = curLeft - 1 >= 1 ? curLeft - 1 : 0
-      const prevLeft = curLeft - 2 >= 1 ? curLeft - 2 : 0
-
-      void renderPageToCanvasTexture(
-        frontPageNum,
-        frontCanvas,
-        pageW,
-        pageH,
-        baseLeftTextLayerRef.value,
-        baseLeftCanvasRef.value,
-      )
-
-      void renderPageToCanvasTexture(
-        backPageNum,
-        backCanvas,
-        pageW,
-        pageH,
-      ).then(() => {
-        pageCurl3D.setTextures(frontCanvas, backCanvas)
-        pageCurl3D.render()
-      })
-
-      pageCurl3D.setupScene({
-        isTwoPage: true,
-        pageWidth: pageW,
-        pageHeight: pageH,
-        direction: 'previous',
-      })
-      pageCurl3D.setTextures(frontCanvas, backCanvas)
-      pageCurl3D.updateUniforms({
-        progress: 0.001,
-        direction: 'previous',
-        isTwoPage: true,
-        gripY,
-        pointerDeltaY: 0,
-        theme: activeTheme.value as any,
-      })
-      pageCurl3D.render()
-
-      if (prevLeft > 0 && layout.leftPage) {
-        void renderPageToElement(prevLeft, baseLeftCanvasRef.value, baseLeftTextLayerRef.value, pageW, pageH)
-      }
-    }
-  } else if (layout.singlePage) {
-    const pageW = layout.singlePage.width
-    const pageH = layout.singlePage.height
-
-    if (direction === 'next') {
-      const frontPageNum = curPage
-      const backPageNum = curPage + 1 <= total ? curPage + 1 : 0
-
-      void renderPageToCanvasTexture(
-        frontPageNum,
-        frontCanvas,
-        pageW,
-        pageH,
-        baseSingleTextLayerRef.value,
-        baseSingleCanvasRef.value,
-      )
-
-      void renderPageToCanvasTexture(
-        backPageNum,
-        backCanvas,
-        pageW,
-        pageH,
-      ).then(() => {
-        pageCurl3D.setTextures(frontCanvas, backCanvas)
-        pageCurl3D.render()
-      })
-
-      pageCurl3D.setupScene({
-        isTwoPage: false,
-        pageWidth: pageW,
-        pageHeight: pageH,
-        direction: 'next',
-      })
-      pageCurl3D.setTextures(frontCanvas, backCanvas)
-      pageCurl3D.updateUniforms({
-        progress: 0.001,
-        direction: 'next',
-        isTwoPage: false,
-        gripY,
-        pointerDeltaY: 0,
-        theme: activeTheme.value as any,
-      })
-      pageCurl3D.render()
-    } else {
-      // PREVIOUS (Single-Page)
-      const frontPageNum = curPage
-      const backPageNum = curPage - 1 >= 1 ? curPage - 1 : 0
-
-      void renderPageToCanvasTexture(
-        frontPageNum,
-        frontCanvas,
-        pageW,
-        pageH,
-        baseSingleTextLayerRef.value,
-        baseSingleCanvasRef.value,
-      )
-
-      void renderPageToCanvasTexture(
-        backPageNum,
-        backCanvas,
-        pageW,
-        pageH,
-      ).then(() => {
-        pageCurl3D.setTextures(frontCanvas, backCanvas)
-        pageCurl3D.render()
-      })
-
-      pageCurl3D.setupScene({
-        isTwoPage: false,
-        pageWidth: pageW,
-        pageHeight: pageH,
-        direction: 'previous',
-      })
-      pageCurl3D.setTextures(frontCanvas, backCanvas)
-      pageCurl3D.updateUniforms({
-        progress: 0.001,
-        direction: 'previous',
-        isTwoPage: false,
-        gripY,
-        pointerDeltaY: 0,
-        theme: activeTheme.value as any,
-      })
-      pageCurl3D.render()
+  // No modo de livro aberto, deixa a folha que será revelada pronta sob a animação.
+  if (isTwoPage) {
+    const revealedPage = direction === 'next' ? left + 3 : left - 2
+    const targetCanvas = direction === 'next' ? baseRightCanvasRef.value : baseLeftCanvasRef.value
+    const targetText = direction === 'next' ? baseRightTextLayerRef.value : baseLeftTextLayerRef.value
+    if (revealedPage >= 1 && revealedPage <= total) {
+      void renderPageToElement(revealedPage, targetCanvas, targetText, pageW, pageH)
     }
   }
 }
@@ -1025,8 +899,9 @@ function onPointerMove(event: PointerEvent) {
 
     stageRef.value?.setPointerCapture(event.pointerId)
 
-    // Ativação síncrona e instantânea do 3D
-    activateDrag(direction, startPoint, relY, pageWidth, pageHeight, pt)
+    // A preparação assíncrona só ativa a física quando o par de texturas está pronto.
+    const activationToken = ++dragActivationToken
+    void activateDrag(direction, startPoint, relY, pageWidth, pageHeight, pt, activationToken)
     return
   }
 
@@ -1041,15 +916,18 @@ function onPointerMove(event: PointerEvent) {
  * P1/P4: Ativa o arraste 3D após o limiar de deslocamento ser atingido.
  * Prepara as texturas e inicia a física de arraste instantaneamente.
  */
-function activateDrag(
+async function activateDrag(
   direction: PageTurnDirection,
   startPoint: DragPoint,
   relY: number,
   pageWidth: number,
   pageHeight: number,
   currentPoint: DragPoint,
+  activationToken: number,
 ) {
-  prepare3DTextures(direction, relY)
+  await prepare3DTextures(direction, relY)
+  if (activationToken !== dragActivationToken || activePointerId === null) return
+
   is3DActive.value = true
   emit('transition-state', true)
 
@@ -1065,6 +943,7 @@ function onPointerUp(event: PointerEvent) {
   if (pendingDrag) {
     const { direction, startPoint } = pendingDrag
     pendingDrag = null
+    dragActivationToken++
     activePointerId = null
 
     const pt = pointFrom(event)
@@ -1095,6 +974,7 @@ function onPointerUp(event: PointerEvent) {
 function onPointerCancel(event: PointerEvent) {
   if (event.pointerId !== activePointerId) return
   pendingDrag = null
+  dragActivationToken++
   activePointerId = null
   physics.cancelDrag()
 }
@@ -1127,7 +1007,7 @@ async function requestTurn(direction: PageTurnDirection) {
   const h = targetPageRect?.height || 600
   const travelWidth = layout.isTwoPage ? w * 2 : w
 
-  prepare3DTextures(direction, 0.5)
+  await prepare3DTextures(direction, 0.5)
   is3DActive.value = true
   emit('transition-state', true)
 

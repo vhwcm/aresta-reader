@@ -420,7 +420,9 @@ const FRAGMENT_SHADER = `
     vec3 lightDir = normalize(vec3(0.15, 0.25, 0.95));
     vec3 norm = normalize(vNormalVec);
 
-    if (vFacing > 0.0) {
+    // Use the rasterizer's actual face orientation. The analytical curl
+    // classification can disagree with the projected triangle near the fold.
+    if (gl_FrontFacing) {
       vec4 frontTex = texture2D(uFrontTexture, vUv);
       vec3 paperBase = frontTex.rgb;
 
