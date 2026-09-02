@@ -195,6 +195,14 @@
         :style="webglCanvasStyle"
         aria-hidden="true"
       />
+
+      <!-- Contêiner offscreen com layout ativo para medição e rasterização fiel do verso -->
+      <div
+        ref="offscreenPageRef"
+        class="page-text-layer page-text-layer--offscreen"
+        style="position: fixed; left: 0; top: 0; opacity: 0.001; pointer-events: none; z-index: -9999; overflow: hidden;"
+        aria-hidden="true"
+      />
     </div>
 
     <!-- Indicador de Carregamento -->
@@ -277,6 +285,7 @@ const baseRightCanvasRef = ref<HTMLCanvasElement | null>(null)
 const baseRightTextLayerRef = ref<HTMLElement | null>(null)
 const baseSingleCanvasRef = ref<HTMLCanvasElement | null>(null)
 const baseSingleTextLayerRef = ref<HTMLElement | null>(null)
+const offscreenPageRef = ref<HTMLElement | null>(null)
 
 // Canvases Offscreen para Texturização WebGL
 let frontOffscreenCanvas: HTMLCanvasElement | null = null
@@ -483,7 +492,7 @@ async function renderPageToCanvasTexture(
   visibleSourceEl?: HTMLElement | null,
   pdfCanvas?: HTMLCanvasElement | null,
 ): Promise<void> {
-  const dpr = typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, 2) : 1
+  const dpr = typeof window !== 'undefined' ? Math.max(2, Math.min(window.devicePixelRatio || 1, 3)) : 2
   const renderW = Math.round(width * dpr)
   const renderH = Math.round(height * dpr)
 
@@ -533,7 +542,7 @@ async function renderPageToCanvasTexture(
     }
   }
 
-  // 2. Se houver elemento visível no DOM com filhos (frente da página)
+  // 2. Se houver elemento visível no DOM com filhos (frente da página já visível na tela)
   if (visibleSourceEl && visibleSourceEl.children.length > 0) {
     const drawn = rasterizeElementToCanvas(
       visibleSourceEl,
@@ -542,12 +551,33 @@ async function renderPageToCanvasTexture(
       height,
       theme,
       pdfCanvas,
-      { fontSize: store.fontSize, fontFamily: store.fontFamily },
     )
     if (drawn) return
   }
 
-  // 3. Extração do texto da página via doc.getTextContent
+  // 3. Renderização offscreen fiel do verso ou página não visível via doc.renderTextLayer
+  if ((doc.type === 'epub' || doc.type === 'didactic') && typeof doc.renderTextLayer === 'function') {
+    if (offscreenPageRef.value) {
+      try {
+        offscreenPageRef.value.style.width = `${width}px`
+        offscreenPageRef.value.style.height = `${height}px`
+        await doc.renderTextLayer(pageNumber, offscreenPageRef.value, width, height)
+        const drawn = rasterizeElementToCanvas(
+          offscreenPageRef.value,
+          targetCanvas,
+          width,
+          height,
+          theme,
+        )
+        offscreenPageRef.value.innerHTML = ''
+        if (drawn) return
+      } catch {
+        // continua para fallback se renderTextLayer falhar
+      }
+    }
+  }
+
+  // 4. Fallback com texto puro extraído do documento para a página específica
   if (typeof doc.getTextContent === 'function') {
     try {
       const pageText = await doc.getTextContent(pageNumber)
@@ -563,7 +593,7 @@ async function renderPageToCanvasTexture(
         return
       }
     } catch {
-      // fallback gracioso se getTextContent falhar
+      // fallback silencioso se getTextContent falhar
     }
   }
 }

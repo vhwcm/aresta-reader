@@ -13,7 +13,20 @@ export interface LoginResponse {
   user: AuthUser
 }
 
-const API_BASE = 'http://localhost:7070/api'
+const getAuthApiUrl = () => {
+  if (typeof useRuntimeConfig === 'function') {
+    try {
+      const config = useRuntimeConfig()
+      if (config?.public?.authApiUrl) {
+        return config.public.authApiUrl
+      }
+    } catch {
+      // fallback gracioso se runtime config não estiver disponível
+    }
+  }
+  return 'http://localhost:3001'
+}
+
 const COOKIE_OPTS = {
   path: '/',
   maxAge: 60 * 60 * 24 * 7, // 7 dias
@@ -50,9 +63,11 @@ export const useAuth = () => {
 
   const login = async (loginId: string, passwordStr: string) => {
     try {
-      const response = await $fetch<LoginResponse>(`${API_BASE}/auth/login`, {
+      const authUrl = getAuthApiUrl()
+      const response = await $fetch<LoginResponse>(`${authUrl}/api/auth/login`, {
         method: 'POST',
         body: {
+          email: loginId,
           login: loginId,
           password: passwordStr
         }
@@ -63,14 +78,15 @@ export const useAuth = () => {
       return { success: true, user: response.user }
     } catch (e: any) {
       console.error('Erro no login:', e)
-      const errorMsg = e.data || e.statusMessage || 'Falha ao autenticar. Verifique o login e a senha.'
+      const errorMsg = e.data?.error || e.data?.message || e.statusMessage || 'Falha ao autenticar. Verifique o login e a senha.'
       return { success: false, error: typeof errorMsg === 'string' ? errorMsg : 'Usuário ou senha inválidos.' }
     }
   }
 
   const register = async (name: string, email: string, passwordStr: string) => {
     try {
-      const response = await $fetch<LoginResponse>(`${API_BASE}/auth/register`, {
+      const authUrl = getAuthApiUrl()
+      const response = await $fetch<LoginResponse>(`${authUrl}/api/auth/register`, {
         method: 'POST',
         body: {
           name,
@@ -84,7 +100,7 @@ export const useAuth = () => {
       return { success: true, user: response.user }
     } catch (e: any) {
       console.error('Erro no registro:', e)
-      const errorMsg = e.data?.message || e.data?.error || e.data || e.statusMessage || 'Falha ao registrar usuário.'
+      const errorMsg = e.data?.error || e.data?.message || e.data || e.statusMessage || 'Falha ao registrar usuário.'
       return { success: false, error: typeof errorMsg === 'string' ? errorMsg : 'Falha ao registrar usuário.' }
     }
   }
@@ -101,7 +117,8 @@ export const useAuth = () => {
   const deleteAccount = async () => {
     if (!tokenCookie.value) return { success: false, error: 'Usuário não autenticado.' }
     try {
-      await $fetch(`${API_BASE}/auth/me`, {
+      const authUrl = getAuthApiUrl()
+      await $fetch(`${authUrl}/api/auth/me`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${tokenCookie.value}` }
       })
@@ -122,9 +139,11 @@ export const useAuth = () => {
   const fetchCurrentUser = async () => {
     if (!tokenCookie.value) return null
     try {
-      const userData = await $fetch<AuthUser>(`${API_BASE}/auth/me`, {
+      const authUrl = getAuthApiUrl()
+      const data = await $fetch<any>(`${authUrl}/api/auth/me`, {
         headers: { Authorization: `Bearer ${tokenCookie.value}` }
       })
+      const userData = data?.user || data
       userCookie.value = userData
       return userData
     } catch (e) {

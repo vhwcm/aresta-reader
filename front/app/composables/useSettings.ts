@@ -50,7 +50,17 @@ export interface UserSettingsResponse {
   updatedAt?: string | null
 }
 
-const API_BASE = 'http://localhost:7070/api'
+const getAuthApiUrl = () => {
+  if (typeof useRuntimeConfig === 'function') {
+    try {
+      const config = useRuntimeConfig()
+      if (config?.public?.authApiUrl) return config.public.authApiUrl
+    } catch {
+      // fallback gracioso se runtime config não estiver disponível
+    }
+  }
+  return 'http://localhost:3001'
+}
 const STORAGE_KEY = 'aresta_settings'
 
 const settings = reactive<SettingsState>({
@@ -261,7 +271,8 @@ export function useSettings() {
   const persistToServer = async () => {
     if (!auth.token?.value) return
     try {
-      await $fetch(`${API_BASE}/user-settings`, {
+      const authUrl = getAuthApiUrl()
+      await $fetch(`${authUrl}/api/user-settings`, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${auth.token.value}` },
         body: {
@@ -285,7 +296,8 @@ export function useSettings() {
   const loadFromServer = async () => {
     if (!auth.token?.value) return
     try {
-      const data = await $fetch<UserSettingsResponse>(`${API_BASE}/user-settings`, {
+      const authUrl = getAuthApiUrl()
+      const data = await $fetch<UserSettingsResponse>(`${authUrl}/api/user-settings`, {
         headers: { Authorization: `Bearer ${auth.token.value}` },
       })
       if (data) {

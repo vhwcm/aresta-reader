@@ -60,7 +60,7 @@ export function drawPlainTextToCanvas(
   theme: ReaderTheme = 'sepia',
   options?: RasterizeOptions,
 ): void {
-  const dpr = typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, 2) : 1
+  const dpr = typeof window !== 'undefined' ? Math.max(2, Math.min(window.devicePixelRatio || 1, 3)) : 2
   const renderW = Math.round(width * dpr)
   const renderH = Math.round(height * dpr)
 
@@ -151,10 +151,54 @@ export function drawPlainTextToCanvas(
   ctx.restore()
 }
 
+function drawNodeWords(
+  textNode: Node,
+  fullText: string,
+  range: Range,
+  containerRect: { top: number; left: number; bottom: number; right: number },
+  fontSize: number,
+  ctx: CanvasRenderingContext2D,
+): number {
+  let count = 0
+  const regex = /\S+/g
+  let match: RegExpExecArray | null
+
+  while ((match = regex.exec(fullText)) !== null) {
+    const start = match.index
+    const end = start + match[0].length
+
+    try {
+      range.setStart(textNode, start)
+      range.setEnd(textNode, end)
+      const rects = range.getClientRects()
+
+      for (let i = 0; i < rects.length; i++) {
+        const wr = rects[i]!
+        if (
+          wr.bottom > containerRect.top + 1 &&
+          wr.top < containerRect.bottom - 1 &&
+          wr.right > containerRect.left + 1 &&
+          wr.left < containerRect.right - 1
+        ) {
+          const x = wr.left - containerRect.left
+          const y = wr.top - containerRect.top + fontSize * 0.82
+          ctx.fillText(match[0], x, y)
+          count++
+        }
+      }
+    } catch {
+      // continua para próxima palavra se Range falhar
+    }
+  }
+
+  return count
+}
+
 /**
- * Rasteriza com máxima fidelidade visual um contêiner DOM ou canvas PDF para um canvas alvo.
- * Mantém o canvas 100% origin-clean para permitir uso direto como textura Three.js WebGL.
- * Retorna true se algum conteúdo foi desenhado, false se estava vazio.
+ * Rasteriza com fidelidade geométrica pixel-perfect um contêiner DOM ou canvas PDF para um canvas alvo.
+ * Utiliza medição de Range nos nós de texto reais para obter a exata posição x/y calculada pelo navegador,
+ * preservando diagramação CSS multi-coluna, alinhamento justificado, recuo de parágrafo e pesos de fonte.
+ * Mantém o canvas 100% origin-clean para textura Three.js WebGL.
  */
 export function rasterizeElementToCanvas(
   containerEl: HTMLElement | null,
@@ -166,7 +210,7 @@ export function rasterizeElementToCanvas(
   options?: RasterizeOptions,
 ): boolean {
   if (!targetCanvas) return false
-  const dpr = typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, 2) : 1
+  const dpr = typeof window !== 'undefined' ? Math.max(2, Math.min(window.devicePixelRatio || 1, 3)) : 2
   const renderW = Math.round(width * dpr)
   const renderH = Math.round(height * dpr)
 
@@ -200,7 +244,7 @@ export function rasterizeElementToCanvas(
 
   if (!containerEl) return false
 
-  // 3. Renderização de conteúdo DOM
+  // 3. Renderização de conteúdo DOM com máxima fidelidade geométrica
   let drawnCount = 0
   const containerRect = containerEl.getBoundingClientRect ? containerEl.getBoundingClientRect() : {
     top: 0,
@@ -240,96 +284,49 @@ export function rasterizeElementToCanvas(
     })
   }
 
-  // 3.2 Percorre blocos de texto formatados
-  const selector = 'h1, h2, h3, h4, h5, h6, p, li, blockquote, .didactic-heading, .didactic-paragraph, .chapter-title, .title, .subtitle, .callout-header, .callout-body'
-  const textBlocks = typeof containerEl.querySelectorAll === 'function'
-    ? Array.from(containerEl.querySelectorAll<HTMLElement>(selector))
-    : []
+  // 3.2 Extração palavra por palavra via TreeWalker + Range (Posicionamento Pixel-Perfect NATIVO)
+  if (!isJSDOM && typeof document !== 'undefined' && typeof document.createTreeWalker === 'function') {
+    try {
+      const walker = document.createTreeWalker(containerEl, NodeFilter.SHOW_TEXT, null)
+      let textNode: Node | null
+      const range = document.createRange()
 
-  const leafBlocks = textBlocks.filter((el) => {
-    return el.querySelector(selector) === null
-  })
+      while ((textNode = walker.nextNode())) {
+        const fullText = textNode.textContent
+        if (!fullText || !fullText.trim()) continue
 
-  if (leafBlocks.length > 0 && !isJSDOM) {
-    leafBlocks.forEach((el) => {
-      const r = el.getBoundingClientRect()
-      // Se estiver totalmente fora da página visível, pula
-      if (
-        r.bottom <= containerRect.top + 2 ||
-        r.top >= containerRect.bottom - 2 ||
-        r.right <= containerRect.left + 2 ||
-        r.left >= containerRect.right - 2
-      ) {
-        return
-      }
+        const parent = textNode.parentElement
+        if (!parent) continue
 
-      const text = (el.innerText || el.textContent || '').trim()
-      if (!text) return
+        const style = typeof window !== 'undefined' && typeof window.getComputedStyle === 'function'
+          ? window.getComputedStyle(parent)
+          : null
 
-      const style = typeof window !== 'undefined' && typeof window.getComputedStyle === 'function'
-        ? window.getComputedStyle(el)
-        : null
-
-      const fontSize = options?.fontSize || (style ? parseFloat(style.fontSize) || 16 : 16)
-      const fontWeight = style?.fontWeight || 'normal'
-      const fontStyle = style?.fontStyle || 'normal'
-      const fontFamily = options?.fontFamily || style?.fontFamily || "'Newsreader', Georgia, serif"
-      const textAlign = (style?.textAlign || 'left') as CanvasTextAlign
-
-      ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`
-      ctx.fillStyle = (style?.color && style.color !== 'transparent' && style.color !== 'rgba(0, 0, 0, 0)')
-        ? style.color
-        : textColor
-
-      const rawLineHeight = style ? parseFloat(style.lineHeight) : NaN
-      const lineHeight = !isNaN(rawLineHeight) && rawLineHeight > 0 ? rawLineHeight : Math.round(fontSize * 1.6)
-
-      const x = Math.max(16, r.left - containerRect.left)
-      const maxWidth = Math.min(width - 32, r.width > 0 ? r.width : width - 2 * x)
-      let y = (r.top - containerRect.top) + fontSize * 0.9
-
-      const words = text.split(/\s+/)
-      let currentLine = ''
-
-      for (let i = 0; i < words.length; i++) {
-        const word = words[i]!
-        const testLine = currentLine ? `${currentLine} ${word}` : word
-        const metrics = ctx.measureText(testLine)
-
-        if (metrics.width > maxWidth && currentLine) {
-          let lineX = x
-          if (textAlign === 'center') {
-            lineX = x + Math.max(0, (maxWidth - ctx.measureText(currentLine).width) / 2)
-          } else if (textAlign === 'right') {
-            lineX = x + Math.max(0, maxWidth - ctx.measureText(currentLine).width)
-          }
-          if (y >= 0 && y <= height + fontSize) {
-            ctx.fillText(currentLine, lineX, y)
-            drawnCount++
-          }
-          currentLine = word
-          y += lineHeight
-        } else {
-          currentLine = testLine
+        if (style && (style.visibility === 'hidden' || style.display === 'none')) {
+          continue
         }
-      }
 
-      if (currentLine && y >= 0 && y <= height + fontSize) {
-        let lineX = x
-        if (textAlign === 'center') {
-          lineX = x + Math.max(0, (maxWidth - ctx.measureText(currentLine).width) / 2)
-        } else if (textAlign === 'right') {
-          lineX = x + Math.max(0, maxWidth - ctx.measureText(currentLine).width)
-        }
-        ctx.fillText(currentLine, lineX, y)
-        drawnCount++
+        const fontSize = style ? parseFloat(style.fontSize) || 16 : 16
+        const fontWeight = style?.fontWeight || 'normal'
+        const fontStyle = style?.fontStyle || 'normal'
+        const fontFamily = style?.fontFamily || "'Newsreader', Georgia, serif"
+        const color = (style?.color && style.color !== 'transparent' && style.color !== 'rgba(0, 0, 0, 0)')
+          ? style.color
+          : textColor
+
+        ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`
+        ctx.fillStyle = color
+
+        drawnCount += drawNodeWords(textNode, fullText, range, containerRect, fontSize, ctx)
       }
-    })
+    } catch {
+      // continua para fallback se TreeWalker falhar
+    }
   }
 
   ctx.restore()
 
-  // 3.3 Se nenhum bloco desenhou texto (ex: JSDOM, elementos fora do fluxo ou tags não mapeadas), faz fallback com o texto do contêiner
+  // 3.3 Fallback caso nenhum nó tenha sido renderizado (ex: JSDOM no ambiente de teste)
   if (drawnCount === 0) {
     const plainText = (containerEl.innerText || containerEl.textContent || '').trim()
     if (plainText) {

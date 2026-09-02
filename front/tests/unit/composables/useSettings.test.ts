@@ -177,7 +177,7 @@ describe('useSettings Composable', () => {
     const { loadFromServer, pageAnimationEnabled, pageCreaseEnabled, language, themeMode, desktopHomeGraphOpen, epubFontFamily } = useSettings()
     await loadFromServer()
 
-    expect(mockFetch).toHaveBeenCalledWith('http://localhost:7070/api/user-settings', {
+    expect(mockFetch).toHaveBeenCalledWith('http://localhost:3001/api/user-settings', {
       headers: { Authorization: 'Bearer token-abc' },
     })
     expect(pageAnimationEnabled.value).toBe(false)
@@ -203,7 +203,7 @@ describe('useSettings Composable', () => {
     setPageCreaseEnabled(false)
 
     await vi.waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith('http://localhost:7070/api/user-settings', {
+      expect(mockFetch).toHaveBeenCalledWith('http://localhost:3001/api/user-settings', {
         method: 'PUT',
         headers: { Authorization: 'Bearer token-abc' },
         body: expect.objectContaining({

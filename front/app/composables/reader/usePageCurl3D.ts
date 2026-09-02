@@ -494,7 +494,7 @@ export function usePageCurl3D(canvasHostRef: Ref<HTMLCanvasElement | null>) {
 
     const totalCanvasWidth = isTwoPageMode ? currentWidth * 2 : currentWidth
     const totalCanvasHeight = currentHeight
-    const dpr = typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, 2) : 1
+    const dpr = typeof window !== 'undefined' ? Math.max(2, Math.min(window.devicePixelRatio || 1, 3)) : 2
 
     if (!renderer) {
       renderer = new THREE.WebGLRenderer({
@@ -626,6 +626,8 @@ export function usePageCurl3D(canvasHostRef: Ref<HTMLCanvasElement | null>) {
         frontTexture.minFilter = THREE.LinearFilter
         frontTexture.magFilter = THREE.LinearFilter
         frontTexture.generateMipmaps = false
+        const maxAniso = renderer?.capabilities?.getMaxAnisotropy ? renderer.capabilities.getMaxAnisotropy() : 1
+        frontTexture.anisotropy = Math.min(maxAniso, 16)
         u.uFrontTexture.value = frontTexture
       } else {
         frontTexture.needsUpdate = true
@@ -646,6 +648,8 @@ export function usePageCurl3D(canvasHostRef: Ref<HTMLCanvasElement | null>) {
         backTexture.minFilter = THREE.LinearFilter
         backTexture.magFilter = THREE.LinearFilter
         backTexture.generateMipmaps = false
+        const maxAniso = renderer?.capabilities?.getMaxAnisotropy ? renderer.capabilities.getMaxAnisotropy() : 1
+        backTexture.anisotropy = Math.min(maxAniso, 16)
         u.uBackTexture.value = backTexture
       } else {
         backTexture.needsUpdate = true
