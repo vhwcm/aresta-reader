@@ -420,10 +420,9 @@ const FRAGMENT_SHADER = `
     vec3 lightDir = normalize(vec3(0.15, 0.25, 0.95));
     vec3 norm = normalize(vNormalVec);
 
-    // Keep the page face selected from the analytical curl so adjacent
-    // triangles do not switch textures merely because their projected
-    // winding changes near the fold.
-    if (vFacing > 0.0) {
+    // Select the texture per rasterized triangle. A varying face value is
+    // interpolated across vertices and can cut glyphs inside a triangle.
+    if (gl_FrontFacing) {
       vec4 frontTex = texture2D(uFrontTexture, vUv);
       vec3 paperBase = frontTex.rgb;
 
