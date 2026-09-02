@@ -1,0 +1,38 @@
+services:
+  reader-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: aresta_reader_db
+      POSTGRES_USER: aresta
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+    ports:
+      - "5433:5432"
+    volumes:
+      - reader-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aresta -d aresta_reader_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  aresta-reader:
+    build: ./backend
+    ports:
+      - "3003:3003"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://aresta:${DB_PASSWORD:-password}@reader-db:5432/aresta_reader_db
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      AUTH_SERVICE_URL: ${AUTH_SERVICE_URL:-http://localhost:3001}
+      MEMORY_SERVICE_URL: ${MEMORY_SERVICE_URL:-http://localhost:3005}
+      AI_SERVICE_URL: ${AI_SERVICE_URL:-http://localhost:3002}
+      STORAGE_PATH: /app/storage
+    volumes:
+      - reader-storage:/app/storage
+    depends_on:
+      reader-db:
+        condition: service_healthy
+
+volumes:
+  reader-db-data:
+  reader-storage:

@@ -1,0 +1,50 @@
+name: Quality Gates
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  backend-quality-gates:
+    name: Backend Quality Gates (Express / TypeScript / PostgreSQL)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - name: Prisma Generate
+        run: npx prisma generate
+        env:
+          DATABASE_URL: postgresql://aresta:password@localhost:5433/aresta_reader_db
+      - name: Build & Typecheck
+        run: npm run build
+        env:
+          DATABASE_URL: postgresql://aresta:password@localhost:5433/aresta_reader_db
+      - run: npm run test
+
+  frontend-quality-gates:
+    name: Frontend Quality Gates (Nuxt / Vue / TypeScript)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./front
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: front/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test

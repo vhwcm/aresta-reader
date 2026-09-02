@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// NOTE: user_id is an external reference to aresta-auth User.id
+model Book {
+  id          Int             @id @default(autoincrement())
+  title       String
+  file_path   String
+  cover_path  String?
+  file_type   String          @default("epub")
+  created_at  DateTime        @default(now())
+  publicInfo  BookPublicInfo?
+  userBooks   UserBook[]
+  bookThemes  BookTheme[]
+
+  @@map("books")
+}
+
+model BookPublicInfo {
+  id         Int      @id @default(autoincrement())
+  book_id    Int      @unique
+  author     String
+  summary    String?
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+  book       Book     @relation(fields: [book_id], references: [id], onDelete: Cascade)
+
+  @@map("book_public_infos")
+}
+
+model UserBook {
+  id               Int       @id @default(autoincrement())
+  user_id          Int       // external ref — aresta-auth User.id
+  book_id          Int
+  status           String    @default("QUERO_LER")
+  current_page     Int       @default(0)
+  last_accessed_at DateTime?
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @default(now()) @updatedAt
+  book             Book      @relation(fields: [book_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, book_id])
+  @@map("user_books")
+}
+
+model Theme {
+  id                Int               @id @default(autoincrement())
+  name              String            @unique
+  color             String?           @default("#E57B55")
+  description       String?
+  embedding         String?
+  created_at        DateTime          @default(now())
+  parentHierarchies ThemeHierarchy[]  @relation("ParentTheme")
+  childHierarchies  ThemeHierarchy[]  @relation("ChildTheme")
+  bookThemes        BookTheme[]
+
+  @@map("themes")
+}
+
+model ThemeHierarchy {
+  id              Int      @id @default(autoincrement())
+  parent_theme_id Int
+  child_theme_id  Int
+  created_at      DateTime @default(now())
+  parentTheme     Theme    @relation("ParentTheme", fields: [parent_theme_id], references: [id], onDelete: Cascade)
+  childTheme      Theme    @relation("ChildTheme", fields: [child_theme_id], references: [id], onDelete: Cascade)
+
+  @@unique([parent_theme_id, child_theme_id])
+  @@map("theme_hierarchies")
+}
+
+model BookTheme {
+  id         Int      @id @default(autoincrement())
+  book_id    Int
+  theme_id   Int
+  created_at DateTime @default(now())
+  book       Book     @relation(fields: [book_id], references: [id], onDelete: Cascade)
+  theme      Theme    @relation(fields: [theme_id], references: [id], onDelete: Cascade)
+
+  @@unique([book_id, theme_id])
+  @@map("book_themes")
+}

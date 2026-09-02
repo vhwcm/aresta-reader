@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.env
+storage/
+front/.nuxt/
+front/.output/
+front/node_modules/
+backend/dist/
+backend/node_modules/
+backend/prisma/migrations/
+front/src-tauri/target/
