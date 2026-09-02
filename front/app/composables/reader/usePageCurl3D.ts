@@ -420,9 +420,10 @@ const FRAGMENT_SHADER = `
     vec3 lightDir = normalize(vec3(0.15, 0.25, 0.95));
     vec3 norm = normalize(vNormalVec);
 
-    // Use the rasterizer's actual face orientation. The analytical curl
-    // classification can disagree with the projected triangle near the fold.
-    if (gl_FrontFacing) {
+    // Keep the page face selected from the analytical curl so adjacent
+    // triangles do not switch textures merely because their projected
+    // winding changes near the fold.
+    if (vFacing > 0.0) {
       vec4 frontTex = texture2D(uFrontTexture, vUv);
       vec3 paperBase = frontTex.rgb;
 
