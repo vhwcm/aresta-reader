@@ -295,6 +295,7 @@ export class DidacticDocumentAdapter implements IBookDocument {
     if (
       typeof window !== 'undefined' &&
       typeof (window as any).SVGGraphicsElement !== 'undefined' &&
+      !process.env.VITEST &&
       !(window as any).__VITEST__ &&
       typeof (window as any).requestAnimationFrame === 'function'
     ) {

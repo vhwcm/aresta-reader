@@ -1,16 +1,13 @@
-/**
- * pageRasterizer.ts - Módulo de rasterização de alta performance para texturas 3D do leitor Aresta
- * 
- * Converte elementos DOM (EPUB, Livreto Didático) e canvases (PDF) em texturas Canvas 2D
- * 100% origin-clean para consumo direto pelo motor Three.js WebGL (ShaderMaterial).
- * 
- * Elimina problemas de telas pretas/brancas e canvases tainted durante a virada 3D da folha.
- */
-
 export type ReaderTheme = 'sepia' | 'white' | 'black'
 
+export interface RasterizeOptions {
+  fontSize?: number
+  fontFamily?: string
+  lineHeight?: number
+}
+
 /**
- * Aplica filtro de cor de tema diretamente aos pixels do canvas (para PDFs em modo sépia/escuro)
+ * Aplica o filtro de tema diretamente nos pixels do canvas 2D nativo
  */
 export function applyThemeToCanvas(
   ctx: CanvasRenderingContext2D,
@@ -18,29 +15,42 @@ export function applyThemeToCanvas(
   height: number,
   theme: ReaderTheme,
 ): void {
+  if (theme === 'white') return
+
   if (theme === 'sepia') {
     ctx.save()
     ctx.globalCompositeOperation = 'multiply'
     ctx.fillStyle = '#f5eedc'
     ctx.fillRect(0, 0, width, height)
     ctx.restore()
-  } else if (theme === 'black') {
-    const imgData = ctx.getImageData(0, 0, width, height)
-    const d = imgData.data
-    for (let i = 0; i < d.length; i += 4) {
-      const invR = 255 - (d[i] ?? 0)
-      const invG = 255 - (d[i + 1] ?? 0)
-      const invB = 255 - (d[i + 2] ?? 0)
-      d[i] = Math.round(18 + (invR / 255) * (228 - 18))
-      d[i + 1] = Math.round(18 + (invG / 255) * (228 - 18))
-      d[i + 2] = Math.round(20 + (invB / 255) * (231 - 20))
+    return
+  }
+
+  if (theme === 'black') {
+    try {
+      const imgData = ctx.getImageData(0, 0, width, height)
+      const data = imgData.data
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i]!
+        const g = data[i + 1]!
+        const b = data[i + 2]!
+
+        // Inversão com tom escuro suave (#121214)
+        data[i] = Math.round((255 - r) * 0.07 + 18)
+        data[i + 1] = Math.round((255 - g) * 0.07 + 18)
+        data[i + 2] = Math.round((255 - b) * 0.08 + 20)
+      }
+      ctx.putImageData(imgData, 0, 0)
+    } catch {
+      // Caso ocorra erro de contexto em ambiente restrito, preenche fundo
+      ctx.fillStyle = '#121214'
+      ctx.fillRect(0, 0, width, height)
     }
-    ctx.putImageData(imgData, 0, 0)
   }
 }
 
 /**
- * Renderiza texto puro estruturado em parágrafos diretamente no canvas
+ * Renderiza texto puro formatado com máxima legibilidade e segurança contra taint.
  */
 export function drawPlainTextToCanvas(
   targetCanvas: HTMLCanvasElement,
@@ -48,6 +58,7 @@ export function drawPlainTextToCanvas(
   width: number,
   height: number,
   theme: ReaderTheme = 'sepia',
+  options?: RasterizeOptions,
 ): void {
   const dpr = typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, 2) : 1
   const renderW = Math.round(width * dpr)
@@ -71,24 +82,46 @@ export function drawPlainTextToCanvas(
 
   ctx.save()
   ctx.scale(dpr, dpr)
-  ctx.font = '16px Newsreader, Georgia, serif'
+
+  const fontSize = options?.fontSize && options.fontSize > 0 ? options.fontSize : 18
+  const fontFamily = options?.fontFamily || "'Newsreader', Georgia, serif"
+  const baseLineHeight = options?.lineHeight && options.lineHeight > 0
+    ? options.lineHeight
+    : Math.round(fontSize * 1.65)
+
+  ctx.font = `${fontSize}px ${fontFamily}`
   ctx.fillStyle = textColor
 
-  const paddingX = width > 500 ? 36 : 20
-  const paddingY = height > 600 ? 44 : 24
-  const maxWidth = width - 2 * paddingX
-  const lineHeight = 26
-  let y = paddingY + 16
+  const paddingX = width > 700 ? 40 : (width > 500 ? 28 : 20)
+  const paddingY = height > 700 ? 40 : (height > 500 ? 32 : 24)
+  const maxWidth = width - (2 * paddingX)
+  let y = paddingY + fontSize
 
-  const paragraphs = text.split('\n')
-  for (const para of paragraphs) {
-    const trimmed = para.trim()
-    if (!trimmed) {
-      y += lineHeight * 0.5
+  const paragraphs = text.includes('\n') ? text.split('\n') : [text]
+
+  for (let pIdx = 0; pIdx < paragraphs.length; pIdx++) {
+    const rawPara = paragraphs[pIdx]!.trim()
+    if (!rawPara) {
+      y += Math.round(baseLineHeight * 0.5)
       continue
     }
 
-    const words = trimmed.split(/\s+/)
+    // Título ou cabeçalho de abertura (ex: "Capítulo Primeiro", "1", "I")
+    const isHeading = (pIdx === 0 && rawPara.length < 60 && (/^(cap[íi]tulo|chapter|[0-9]+|[ivxlcdm]+)\b/i.test(rawPara) || rawPara === rawPara.toUpperCase()))
+    if (isHeading) {
+      const headingSize = Math.round(fontSize * 1.35)
+      ctx.font = `bold ${headingSize}px ${fontFamily}`
+      const headingMetrics = ctx.measureText(rawPara)
+      const headingX = Math.max(paddingX, (width - headingMetrics.width) / 2)
+      if (y <= height - paddingY) {
+        ctx.fillText(rawPara, headingX, y)
+      }
+      y += Math.round(headingSize * 1.8)
+      ctx.font = `${fontSize}px ${fontFamily}`
+      continue
+    }
+
+    const words = rawPara.split(/\s+/)
     let currentLine = ''
 
     for (let i = 0; i < words.length; i++) {
@@ -97,20 +130,22 @@ export function drawPlainTextToCanvas(
       const metrics = ctx.measureText(testLine)
 
       if (metrics.width > maxWidth && currentLine) {
-        if (y <= height - 20) {
+        if (y <= height - paddingY) {
           ctx.fillText(currentLine, paddingX, y)
         }
         currentLine = word
-        y += lineHeight
+        y += baseLineHeight
       } else {
         currentLine = testLine
       }
     }
 
-    if (currentLine && y <= height - 20) {
+    if (currentLine && y <= height - paddingY) {
       ctx.fillText(currentLine, paddingX, y)
-      y += lineHeight
+      y += baseLineHeight
     }
+
+    y += Math.round(fontSize * 0.4)
   }
 
   ctx.restore()
@@ -119,15 +154,18 @@ export function drawPlainTextToCanvas(
 /**
  * Rasteriza com máxima fidelidade visual um contêiner DOM ou canvas PDF para um canvas alvo.
  * Mantém o canvas 100% origin-clean para permitir uso direto como textura Three.js WebGL.
+ * Retorna true se algum conteúdo foi desenhado, false se estava vazio.
  */
 export function rasterizeElementToCanvas(
-  containerEl: HTMLElement,
+  containerEl: HTMLElement | null,
   targetCanvas: HTMLCanvasElement,
   width: number,
   height: number,
   theme: ReaderTheme = 'sepia',
   pdfCanvasEl?: HTMLCanvasElement | null,
-): void {
+  options?: RasterizeOptions,
+): boolean {
+  if (!targetCanvas) return false
   const dpr = typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, 2) : 1
   const renderW = Math.round(width * dpr)
   const renderH = Math.round(height * dpr)
@@ -138,7 +176,7 @@ export function rasterizeElementToCanvas(
   targetCanvas.style.height = `${height}px`
 
   const ctx = targetCanvas.getContext('2d')
-  if (!ctx) return
+  if (!ctx) return false
 
   const bgColor = theme === 'sepia' ? '#f5eedc' : theme === 'black' ? '#121214' : '#ffffff'
   const textColor = theme === 'sepia' ? '#2a2521' : theme === 'black' ? '#e4e4e7' : '#1a1a1a'
@@ -154,15 +192,16 @@ export function rasterizeElementToCanvas(
       if (theme === 'sepia' || theme === 'black') {
         applyThemeToCanvas(ctx, renderW, renderH, theme)
       }
-      return
+      return true
     } catch {
       // continua para fallback de texto se drawImage falhar
     }
   }
 
-  // 3. Renderização de conteúdo HTML / EPUB / Didactic
-  if (!containerEl) return
+  if (!containerEl) return false
 
+  // 3. Renderização de conteúdo DOM
+  let drawnCount = 0
   const containerRect = containerEl.getBoundingClientRect ? containerEl.getBoundingClientRect() : {
     top: 0,
     left: 0,
@@ -172,7 +211,6 @@ export function rasterizeElementToCanvas(
     height,
   }
 
-  // Se estiver em ambiente JSDOM / HappyDOM sem dimensões reais
   const isJSDOM = containerRect.width === 0 && containerRect.height === 0
 
   ctx.save()
@@ -194,8 +232,9 @@ export function rasterizeElementToCanvas(
         const y = r.top - containerRect.top
         try {
           ctx.drawImage(img, x, y, r.width, r.height)
+          drawnCount++
         } catch {
-          // ignora se imagem não estiver decodificada
+          // ignora erro de decodificação de imagem assíncrona
         }
       }
     })
@@ -207,7 +246,6 @@ export function rasterizeElementToCanvas(
     ? Array.from(containerEl.querySelectorAll<HTMLElement>(selector))
     : []
 
-  // Filtra blocos que contenham filhos que também sejam blocos selecionados (evita duplicar texto)
   const leafBlocks = textBlocks.filter((el) => {
     return el.querySelector(selector) === null
   })
@@ -215,7 +253,7 @@ export function rasterizeElementToCanvas(
   if (leafBlocks.length > 0 && !isJSDOM) {
     leafBlocks.forEach((el) => {
       const r = el.getBoundingClientRect()
-      // Ignora se estiver fora da página visível atual
+      // Se estiver totalmente fora da página visível, pula
       if (
         r.bottom <= containerRect.top + 2 ||
         r.top >= containerRect.bottom - 2 ||
@@ -232,11 +270,11 @@ export function rasterizeElementToCanvas(
         ? window.getComputedStyle(el)
         : null
 
-      const fontSize = style ? parseFloat(style.fontSize) || 16 : 16
+      const fontSize = options?.fontSize || (style ? parseFloat(style.fontSize) || 16 : 16)
       const fontWeight = style?.fontWeight || 'normal'
       const fontStyle = style?.fontStyle || 'normal'
-      const fontFamily = style?.fontFamily || 'Newsreader, Georgia, serif'
-      const textAlign = style?.textAlign || 'left'
+      const fontFamily = options?.fontFamily || style?.fontFamily || "'Newsreader', Georgia, serif"
+      const textAlign = (style?.textAlign || 'left') as CanvasTextAlign
 
       ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`
       ctx.fillStyle = (style?.color && style.color !== 'transparent' && style.color !== 'rgba(0, 0, 0, 0)')
@@ -244,7 +282,7 @@ export function rasterizeElementToCanvas(
         : textColor
 
       const rawLineHeight = style ? parseFloat(style.lineHeight) : NaN
-      const lineHeight = !isNaN(rawLineHeight) && rawLineHeight > 0 ? rawLineHeight : fontSize * 1.6
+      const lineHeight = !isNaN(rawLineHeight) && rawLineHeight > 0 ? rawLineHeight : Math.round(fontSize * 1.6)
 
       const x = Math.max(16, r.left - containerRect.left)
       const maxWidth = Math.min(width - 32, r.width > 0 ? r.width : width - 2 * x)
@@ -267,6 +305,7 @@ export function rasterizeElementToCanvas(
           }
           if (y >= 0 && y <= height + fontSize) {
             ctx.fillText(currentLine, lineX, y)
+            drawnCount++
           }
           currentLine = word
           y += lineHeight
@@ -283,17 +322,22 @@ export function rasterizeElementToCanvas(
           lineX = x + Math.max(0, maxWidth - ctx.measureText(currentLine).width)
         }
         ctx.fillText(currentLine, lineX, y)
+        drawnCount++
       }
     })
-  } else {
-    // Fallback: se não houver blocos ou estiver em JSDOM, extrai o texto do contêiner
-    const plainText = (containerEl.innerText || containerEl.textContent || '').trim()
-    if (plainText) {
-      ctx.restore()
-      drawPlainTextToCanvas(targetCanvas, plainText, width, height, theme)
-      return
-    }
   }
 
   ctx.restore()
+
+  // 3.3 Se nenhum bloco desenhou texto (ex: JSDOM, elementos fora do fluxo ou tags não mapeadas), faz fallback com o texto do contêiner
+  if (drawnCount === 0) {
+    const plainText = (containerEl.innerText || containerEl.textContent || '').trim()
+    if (plainText) {
+      drawPlainTextToCanvas(targetCanvas, plainText, width, height, theme, options)
+      return true
+    }
+    return false
+  }
+
+  return true
 }

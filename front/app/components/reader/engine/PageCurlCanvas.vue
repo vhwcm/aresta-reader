@@ -195,14 +195,6 @@
         :style="webglCanvasStyle"
         aria-hidden="true"
       />
-
-      <!-- Contêiner invisível offscreen para medição e rasterização do verso -->
-      <div
-        ref="offscreenMeasureRef"
-        class="page-text-layer page-text-layer--offscreen"
-        style="position: absolute; left: -9999px; top: -9999px; pointer-events: none; visibility: hidden; z-index: -100; overflow: hidden;"
-        aria-hidden="true"
-      />
     </div>
 
     <!-- Indicador de Carregamento -->
@@ -285,7 +277,6 @@ const baseRightCanvasRef = ref<HTMLCanvasElement | null>(null)
 const baseRightTextLayerRef = ref<HTMLElement | null>(null)
 const baseSingleCanvasRef = ref<HTMLCanvasElement | null>(null)
 const baseSingleTextLayerRef = ref<HTMLElement | null>(null)
-const offscreenMeasureRef = ref<HTMLElement | null>(null)
 
 // Canvases Offscreen para Texturização WebGL
 let frontOffscreenCanvas: HTMLCanvasElement | null = null
@@ -484,66 +475,95 @@ async function renderPageToCanvas(pageNumber: number, targetCanvas: HTMLCanvasEl
   }
 }
 
-async function renderPageToOffscreen(
+async function renderPageToCanvasTexture(
   pageNumber: number,
   targetCanvas: HTMLCanvasElement,
   width: number,
   height: number,
+  visibleSourceEl?: HTMLElement | null,
+  pdfCanvas?: HTMLCanvasElement | null,
 ): Promise<void> {
-  if (pageNumber <= 0 || !store.document || width <= 0 || height <= 0) return
-  const doc = store.document
   const dpr = typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, 2) : 1
-
   const renderW = Math.round(width * dpr)
   const renderH = Math.round(height * dpr)
+
   targetCanvas.width = renderW
   targetCanvas.height = renderH
   targetCanvas.style.width = `${width}px`
   targetCanvas.style.height = `${height}px`
 
-  // 1. PDF: Renderização nativa com aceleração de desenho do PDF.js
-  if (doc.type === 'pdf' && typeof (doc as any).getPage === 'function') {
-    try {
-      const pageData = await (doc as any).getPage(pageNumber, width, height)
-      const ctx = targetCanvas.getContext('2d', { alpha: false })
-      if (ctx) {
-        await pageData.render(ctx)
-        if (activeTheme.value === 'sepia' || activeTheme.value === 'black') {
-          applyThemeToCanvas(ctx, renderW, renderH, activeTheme.value as any)
+  const ctx = targetCanvas.getContext('2d')
+  if (!ctx) return
+
+  ctx.fillStyle = themeBgColor.value
+  ctx.fillRect(0, 0, renderW, renderH)
+
+  if (pageNumber <= 0 || !store.document || width <= 0 || height <= 0) {
+    return
+  }
+
+  const doc = store.document
+  const theme = activeTheme.value as any
+
+  // 1. PDF: Canvas nativo GPU ou renderização vetorial do PDF.js
+  if (doc.type === 'pdf') {
+    if (pdfCanvas && pdfCanvas.width > 0 && pdfCanvas.height > 0) {
+      try {
+        ctx.drawImage(pdfCanvas, 0, 0, renderW, renderH)
+        if (theme === 'sepia' || theme === 'black') {
+          applyThemeToCanvas(ctx, renderW, renderH, theme)
         }
+        return
+      } catch {
+        // continua para renderização vetorial do PDF
       }
-      return
-    } catch {
-      // continua para fallback
+    }
+
+    if (typeof (doc as any).getPage === 'function') {
+      try {
+        const pageData = await (doc as any).getPage(pageNumber, width, height)
+        await pageData.render(ctx)
+        if (theme === 'sepia' || theme === 'black') {
+          applyThemeToCanvas(ctx, renderW, renderH, theme)
+        }
+        return
+      } catch {
+        // continua para fallback de texto se getPage falhar
+      }
     }
   }
 
-  // 2. EPUB / Livreto Didático: Renderiza o HTML no contêiner offscreen e rasteriza para canvas
-  if (offscreenMeasureRef.value && doc.renderTextLayer) {
-    offscreenMeasureRef.value.style.width = `${width}px`
-    offscreenMeasureRef.value.style.height = `${height}px`
-    try {
-      await doc.renderTextLayer(pageNumber, offscreenMeasureRef.value, width, height)
-      rasterizeElementToCanvas(
-        offscreenMeasureRef.value,
-        targetCanvas,
-        width,
-        height,
-        activeTheme.value as any,
-      )
-      return
-    } catch {
-      // continua para fallback
-    }
+  // 2. Se houver elemento visível no DOM com filhos (frente da página)
+  if (visibleSourceEl && visibleSourceEl.children.length > 0) {
+    const drawn = rasterizeElementToCanvas(
+      visibleSourceEl,
+      targetCanvas,
+      width,
+      height,
+      theme,
+      pdfCanvas,
+      { fontSize: store.fontSize, fontFamily: store.fontFamily },
+    )
+    if (drawn) return
   }
 
-  // 3. Fallback garantido com texto puro extraído do documento
+  // 3. Extração do texto da página via doc.getTextContent
   if (typeof doc.getTextContent === 'function') {
     try {
-      const text = await doc.getTextContent(pageNumber)
-      drawPlainTextToCanvas(targetCanvas, text, width, height, activeTheme.value as any)
+      const pageText = await doc.getTextContent(pageNumber)
+      if (pageText && pageText.trim()) {
+        drawPlainTextToCanvas(
+          targetCanvas,
+          pageText,
+          width,
+          height,
+          theme,
+          { fontSize: store.fontSize, fontFamily: store.fontFamily },
+        )
+        return
+      }
     } catch {
-      // fallback silencioso
+      // fallback gracioso se getTextContent falhar
     }
   }
 }
@@ -558,59 +578,52 @@ async function prewarm3DTextures(direction: PageTurnDirection = 'next'): Promise
 
   if (layout.isTwoPage) {
     const curLeft = curPage % 2 !== 0 ? curPage : Math.max(1, curPage - 1)
+    const curRight = curLeft + 1 <= total ? curLeft + 1 : 0
     const pageW = layout.rightPage?.width ?? layout.leftPage?.width ?? 400
     const pageH = layout.rightPage?.height ?? layout.leftPage?.height ?? 600
 
     if (direction === 'next') {
-      const nextLeft = curLeft + 2 <= total ? curLeft + 2 : 0
-      if (baseRightTextLayerRef.value) {
-        rasterizeElementToCanvas(
-          baseRightTextLayerRef.value,
-          frontCanvas,
-          pageW,
-          pageH,
-          activeTheme.value as any,
-          baseRightCanvasRef.value,
-        )
-      }
-      if (nextLeft > 0) {
-        await renderPageToOffscreen(nextLeft, backCanvas, pageW, pageH)
-      }
+      const frontPageNum = curRight > 0 ? curRight : curLeft
+      const backPageNum = curLeft + 2 <= total ? curLeft + 2 : 0
+
+      await Promise.all([
+        renderPageToCanvasTexture(frontPageNum, frontCanvas, pageW, pageH, baseRightTextLayerRef.value, baseRightCanvasRef.value),
+        renderPageToCanvasTexture(backPageNum, backCanvas, pageW, pageH),
+      ])
     } else {
-      const prevRight = curLeft - 1 >= 1 ? curLeft - 1 : 0
-      if (baseLeftTextLayerRef.value) {
-        rasterizeElementToCanvas(
-          baseLeftTextLayerRef.value,
-          frontCanvas,
-          pageW,
-          pageH,
-          activeTheme.value as any,
-          baseLeftCanvasRef.value,
-        )
-      }
-      if (prevRight > 0) {
-        await renderPageToOffscreen(prevRight, backCanvas, pageW, pageH)
-      }
+      const frontPageNum = curLeft
+      const backPageNum = curLeft - 1 >= 1 ? curLeft - 1 : 0
+
+      await Promise.all([
+        renderPageToCanvasTexture(frontPageNum, frontCanvas, pageW, pageH, baseLeftTextLayerRef.value, baseLeftCanvasRef.value),
+        renderPageToCanvasTexture(backPageNum, backCanvas, pageW, pageH),
+      ])
     }
+
+    pageCurl3D.setTextures(frontCanvas, backCanvas)
   } else if (layout.singlePage) {
     const pageW = layout.singlePage.width
     const pageH = layout.singlePage.height
-    if (baseSingleTextLayerRef.value) {
-      rasterizeElementToCanvas(
-        baseSingleTextLayerRef.value,
-        frontCanvas,
-        pageW,
-        pageH,
-        activeTheme.value as any,
-        baseSingleCanvasRef.value,
-      )
+
+    if (direction === 'next') {
+      const frontPageNum = curPage
+      const backPageNum = curPage + 1 <= total ? curPage + 1 : 0
+
+      await Promise.all([
+        renderPageToCanvasTexture(frontPageNum, frontCanvas, pageW, pageH, baseSingleTextLayerRef.value, baseSingleCanvasRef.value),
+        renderPageToCanvasTexture(backPageNum, backCanvas, pageW, pageH),
+      ])
+    } else {
+      const frontPageNum = curPage
+      const backPageNum = curPage - 1 >= 1 ? curPage - 1 : 0
+
+      await Promise.all([
+        renderPageToCanvasTexture(frontPageNum, frontCanvas, pageW, pageH, baseSingleTextLayerRef.value, baseSingleCanvasRef.value),
+        renderPageToCanvasTexture(backPageNum, backCanvas, pageW, pageH),
+      ])
     }
-    const targetPage = direction === 'next'
-      ? Math.min(total, curPage + 1)
-      : Math.max(1, curPage - 1)
-    if (targetPage > 0 && targetPage !== curPage) {
-      await renderPageToOffscreen(targetPage, backCanvas, pageW, pageH)
-    }
+
+    pageCurl3D.setTextures(frontCanvas, backCanvas)
   }
 }
 
@@ -700,28 +713,38 @@ function prepare3DTextures(direction: PageTurnDirection, gripY = 0.5) {
 
   if (layout.isTwoPage) {
     const curLeft = curPage % 2 !== 0 ? curPage : Math.max(1, curPage - 1)
+    const curRight = curLeft + 1 <= total ? curLeft + 1 : 0
 
     const pageW = layout.rightPage?.width ?? layout.leftPage?.width ?? 400
     const pageH = layout.rightPage?.height ?? layout.leftPage?.height ?? 600
 
     if (direction === 'next') {
-      const nextLeft = curLeft + 2 <= total ? curLeft + 2 : 0
+      const frontPageNum = curRight > 0 ? curRight : curLeft
+      const backPageNum = curLeft + 2 <= total ? curLeft + 2 : 0
       const nextRight = curLeft + 3 <= total ? curLeft + 3 : 0
 
-      // 1. Frente da folha girando: Página Direita atual (curRight)
-      // Rasteriza IMEDIATAMENTE de forma síncrona a partir do text layer / canvas já visíveis na tela
-      if (baseRightTextLayerRef.value) {
-        rasterizeElementToCanvas(
-          baseRightTextLayerRef.value,
-          frontCanvas,
-          pageW,
-          pageH,
-          activeTheme.value as any,
-          baseRightCanvasRef.value,
-        )
-      }
+      // 1. Frente da folha girando: renderiza imediatamente
+      void renderPageToCanvasTexture(
+        frontPageNum,
+        frontCanvas,
+        pageW,
+        pageH,
+        baseRightTextLayerRef.value,
+        baseRightCanvasRef.value,
+      )
 
-      // 2. Inicializa a cena 3D e texturas instantaneamente
+      // 2. Verso da folha girando: renderiza assincronamente e atualiza texturas
+      void renderPageToCanvasTexture(
+        backPageNum,
+        backCanvas,
+        pageW,
+        pageH,
+      ).then(() => {
+        pageCurl3D.setTextures(frontCanvas, backCanvas)
+        pageCurl3D.render()
+      })
+
+      // 3. Inicializa a cena 3D e texturas instantaneamente
       pageCurl3D.setupScene({
         isTwoPage: true,
         pageWidth: pageW,
@@ -738,14 +761,6 @@ function prepare3DTextures(direction: PageTurnDirection, gripY = 0.5) {
         theme: activeTheme.value as any,
       })
       pageCurl3D.render()
-
-      // 3. Verso da folha girando: Próxima Página Esquerda (nextLeft)
-      if (nextLeft > 0) {
-        void renderPageToOffscreen(nextLeft, backCanvas, pageW, pageH).then(() => {
-          pageCurl3D.setTextures(frontCanvas, backCanvas)
-          pageCurl3D.render()
-        })
-      }
 
       // 4. Base Direita Revelada: Renderiza a próxima página direita por baixo em background
       if (nextRight > 0 && layout.rightPage) {
@@ -753,22 +768,29 @@ function prepare3DTextures(direction: PageTurnDirection, gripY = 0.5) {
       }
     } else {
       // PREVIOUS (Two-Page)
+      const frontPageNum = curLeft
+      const backPageNum = curLeft - 1 >= 1 ? curLeft - 1 : 0
       const prevLeft = curLeft - 2 >= 1 ? curLeft - 2 : 0
-      const prevRight = curLeft - 1 >= 1 ? curLeft - 1 : 0
 
-      // 1. Frente da folha girando: Página Esquerda atual (curLeft)
-      if (baseLeftTextLayerRef.value) {
-        rasterizeElementToCanvas(
-          baseLeftTextLayerRef.value,
-          frontCanvas,
-          pageW,
-          pageH,
-          activeTheme.value as any,
-          baseLeftCanvasRef.value,
-        )
-      }
+      void renderPageToCanvasTexture(
+        frontPageNum,
+        frontCanvas,
+        pageW,
+        pageH,
+        baseLeftTextLayerRef.value,
+        baseLeftCanvasRef.value,
+      )
 
-      // 2. Inicializa a cena 3D e texturas instantaneamente
+      void renderPageToCanvasTexture(
+        backPageNum,
+        backCanvas,
+        pageW,
+        pageH,
+      ).then(() => {
+        pageCurl3D.setTextures(frontCanvas, backCanvas)
+        pageCurl3D.render()
+      })
+
       pageCurl3D.setupScene({
         isTwoPage: true,
         pageWidth: pageW,
@@ -786,15 +808,6 @@ function prepare3DTextures(direction: PageTurnDirection, gripY = 0.5) {
       })
       pageCurl3D.render()
 
-      // 3. Verso da folha girando: Página Direita Anterior (prevRight)
-      if (prevRight > 0) {
-        void renderPageToOffscreen(prevRight, backCanvas, pageW, pageH).then(() => {
-          pageCurl3D.setTextures(frontCanvas, backCanvas)
-          pageCurl3D.render()
-        })
-      }
-
-      // 4. Base Esquerda Revelada: Renderiza a página esquerda anterior por baixo
       if (prevLeft > 0 && layout.leftPage) {
         void renderPageToElement(prevLeft, baseLeftCanvasRef.value, baseLeftTextLayerRef.value, pageW, pageH)
       }
@@ -803,53 +816,85 @@ function prepare3DTextures(direction: PageTurnDirection, gripY = 0.5) {
     const pageW = layout.singlePage.width
     const pageH = layout.singlePage.height
 
-    // 1. Frente da folha girando: Página única atual
-    if (baseSingleTextLayerRef.value) {
-      rasterizeElementToCanvas(
-        baseSingleTextLayerRef.value,
+    if (direction === 'next') {
+      const frontPageNum = curPage
+      const backPageNum = curPage + 1 <= total ? curPage + 1 : 0
+
+      void renderPageToCanvasTexture(
+        frontPageNum,
         frontCanvas,
         pageW,
         pageH,
-        activeTheme.value as any,
+        baseSingleTextLayerRef.value,
         baseSingleCanvasRef.value,
       )
-    }
 
-    pageCurl3D.setupScene({
-      isTwoPage: false,
-      pageWidth: pageW,
-      pageHeight: pageH,
-      direction,
-    })
-    pageCurl3D.setTextures(frontCanvas, backCanvas)
-    pageCurl3D.updateUniforms({
-      progress: 0.001,
-      direction,
-      isTwoPage: false,
-      gripY,
-      pointerDeltaY: 0,
-      theme: activeTheme.value as any,
-    })
-    pageCurl3D.render()
+      void renderPageToCanvasTexture(
+        backPageNum,
+        backCanvas,
+        pageW,
+        pageH,
+      ).then(() => {
+        pageCurl3D.setTextures(frontCanvas, backCanvas)
+        pageCurl3D.render()
+      })
 
-    if (direction === 'next') {
-      const nextPage = Math.min(total, curPage + 1)
-      if (nextPage > 0) {
-        void renderPageToOffscreen(nextPage, backCanvas, pageW, pageH).then(() => {
-          pageCurl3D.setTextures(frontCanvas, backCanvas)
-          pageCurl3D.render()
-        })
-        void renderPageToElement(nextPage, baseSingleCanvasRef.value, baseSingleTextLayerRef.value, pageW, pageH)
-      }
+      pageCurl3D.setupScene({
+        isTwoPage: false,
+        pageWidth: pageW,
+        pageHeight: pageH,
+        direction: 'next',
+      })
+      pageCurl3D.setTextures(frontCanvas, backCanvas)
+      pageCurl3D.updateUniforms({
+        progress: 0.001,
+        direction: 'next',
+        isTwoPage: false,
+        gripY,
+        pointerDeltaY: 0,
+        theme: activeTheme.value as any,
+      })
+      pageCurl3D.render()
     } else {
-      const prevPage = Math.max(1, curPage - 1)
-      if (prevPage > 0) {
-        void renderPageToOffscreen(prevPage, backCanvas, pageW, pageH).then(() => {
-          pageCurl3D.setTextures(frontCanvas, backCanvas)
-          pageCurl3D.render()
-        })
-        void renderPageToElement(prevPage, baseSingleCanvasRef.value, baseSingleTextLayerRef.value, pageW, pageH)
-      }
+      // PREVIOUS (Single-Page)
+      const frontPageNum = curPage
+      const backPageNum = curPage - 1 >= 1 ? curPage - 1 : 0
+
+      void renderPageToCanvasTexture(
+        frontPageNum,
+        frontCanvas,
+        pageW,
+        pageH,
+        baseSingleTextLayerRef.value,
+        baseSingleCanvasRef.value,
+      )
+
+      void renderPageToCanvasTexture(
+        backPageNum,
+        backCanvas,
+        pageW,
+        pageH,
+      ).then(() => {
+        pageCurl3D.setTextures(frontCanvas, backCanvas)
+        pageCurl3D.render()
+      })
+
+      pageCurl3D.setupScene({
+        isTwoPage: false,
+        pageWidth: pageW,
+        pageHeight: pageH,
+        direction: 'previous',
+      })
+      pageCurl3D.setTextures(frontCanvas, backCanvas)
+      pageCurl3D.updateUniforms({
+        progress: 0.001,
+        direction: 'previous',
+        isTwoPage: false,
+        gripY,
+        pointerDeltaY: 0,
+        theme: activeTheme.value as any,
+      })
+      pageCurl3D.render()
     }
   }
 }
@@ -885,16 +930,6 @@ function getTurnZone(event: PointerEvent): PageTurnDirection | null {
   }
 
   return null
-}
-
-function isTextElement(target: EventTarget | null): boolean {
-  if (!target || !(target instanceof Element)) return false
-  return Boolean(
-    target.closest('.page-text-layer') ||
-    target.closest('.textLayer') ||
-    target.closest('.epub-text-layer-content') ||
-    target.closest('.epub-text-layer-viewport')
-  )
 }
 
 async function onPointerDown(event: PointerEvent) {

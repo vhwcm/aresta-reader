@@ -466,10 +466,10 @@ export function usePageCurl3D(canvasHostRef: Ref<HTMLCanvasElement | null>) {
   let isTwoPageMode = true
   let currentDirection: 'next' | 'previous' = 'next'
 
-  function createFallbackCanvas(text: string, bgColor = '#f5eedc', textColor = '#333333'): HTMLCanvasElement {
+  function createFallbackCanvas(text: string, width = 400, height = 600, bgColor = '#f5eedc', textColor = '#333333'): HTMLCanvasElement {
     const canvas = document.createElement('canvas')
-    canvas.width = 512
-    canvas.height = 724
+    canvas.width = Math.max(1, width)
+    canvas.height = Math.max(1, height)
     const ctx = canvas.getContext('2d')
     if (ctx) {
       ctx.fillStyle = bgColor
@@ -554,14 +554,14 @@ export function usePageCurl3D(canvasHostRef: Ref<HTMLCanvasElement | null>) {
     }
 
     if (!frontTexture) {
-      frontTexture = new THREE.CanvasTexture(createFallbackCanvas(''))
+      frontTexture = new THREE.CanvasTexture(createFallbackCanvas('', currentWidth, currentHeight))
       frontTexture.minFilter = THREE.LinearFilter
       frontTexture.magFilter = THREE.LinearFilter
       frontTexture.generateMipmaps = false
     }
 
     if (!backTexture) {
-      backTexture = new THREE.CanvasTexture(createFallbackCanvas(''))
+      backTexture = new THREE.CanvasTexture(createFallbackCanvas('', currentWidth, currentHeight))
       backTexture.minFilter = THREE.LinearFilter
       backTexture.magFilter = THREE.LinearFilter
       backTexture.generateMipmaps = false
@@ -613,27 +613,41 @@ export function usePageCurl3D(canvasHostRef: Ref<HTMLCanvasElement | null>) {
     const u = shaderMaterial.uniforms as any
 
     if (frontCanvas && frontCanvas.width > 0 && frontCanvas.height > 0) {
-      if (!frontTexture) {
+      if (
+        !frontTexture ||
+        frontTexture.image !== frontCanvas ||
+        frontTexture.image.width !== frontCanvas.width ||
+        frontTexture.image.height !== frontCanvas.height
+      ) {
+        if (frontTexture) {
+          frontTexture.dispose()
+        }
         frontTexture = new THREE.CanvasTexture(frontCanvas)
         frontTexture.minFilter = THREE.LinearFilter
         frontTexture.magFilter = THREE.LinearFilter
         frontTexture.generateMipmaps = false
         u.uFrontTexture.value = frontTexture
       } else {
-        frontTexture.image = frontCanvas
         frontTexture.needsUpdate = true
       }
     }
 
     if (backCanvas && backCanvas.width > 0 && backCanvas.height > 0) {
-      if (!backTexture) {
+      if (
+        !backTexture ||
+        backTexture.image !== backCanvas ||
+        backTexture.image.width !== backCanvas.width ||
+        backTexture.image.height !== backCanvas.height
+      ) {
+        if (backTexture) {
+          backTexture.dispose()
+        }
         backTexture = new THREE.CanvasTexture(backCanvas)
         backTexture.minFilter = THREE.LinearFilter
         backTexture.magFilter = THREE.LinearFilter
         backTexture.generateMipmaps = false
         u.uBackTexture.value = backTexture
       } else {
-        backTexture.image = backCanvas
         backTexture.needsUpdate = true
       }
     }

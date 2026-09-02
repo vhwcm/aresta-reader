@@ -28,14 +28,13 @@ describe('pageRasterizer - Rasterização de Texturas 3D', () => {
       globalCompositeOperation: 'source-over',
     }
 
-    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(function (contextId: string) {
+    HTMLCanvasElement.prototype.getContext = vi.fn(function (contextId: string) {
       if (contextId === '2d') return mockCtx
       return null
-    } as any)
+    }) as any
   })
 
   it('aplica tema sepia com globalCompositeOperation multiply', () => {
-    const canvas = document.createElement('canvas')
     applyThemeToCanvas(mockCtx, 400, 600, 'sepia')
 
     expect(mockCtx.save).toHaveBeenCalled()
@@ -57,7 +56,6 @@ describe('pageRasterizer - Rasterização de Texturas 3D', () => {
     applyThemeToCanvas(mockCtx, 10, 10, 'black')
 
     expect(mockCtx.putImageData).toHaveBeenCalled()
-    // 255 invertido vira 0 -> transformado para cor de fundo escuro (~18)
     expect(fakeImageData.data[0]).toBe(18)
     expect(fakeImageData.data[1]).toBe(18)
     expect(fakeImageData.data[2]).toBe(20)
@@ -67,11 +65,13 @@ describe('pageRasterizer - Rasterização de Texturas 3D', () => {
     const targetCanvas = document.createElement('canvas')
 
     const sampleText = 'Capítulo Primeiro\nEra uma vez um leitor imersivo que folheava páginas tridimensionais com máxima fidelidade e desempenho.'
-    drawPlainTextToCanvas(targetCanvas, sampleText, 400, 600, 'sepia')
+    drawPlainTextToCanvas(targetCanvas, sampleText, 400, 600, 'sepia', {
+      fontSize: 20,
+      fontFamily: "'Newsreader', serif",
+    })
 
     expect(mockCtx.fillRect).toHaveBeenCalled()
     expect(mockCtx.fillText).toHaveBeenCalled()
-    // Deve ter chamado fillText pelo menos 2 vezes (título + parágrafo)
     expect(mockCtx.fillText.mock.calls.length).toBeGreaterThanOrEqual(2)
   })
 
@@ -84,8 +84,9 @@ describe('pageRasterizer - Rasterização de Texturas 3D', () => {
 
     const containerEl = document.createElement('div')
 
-    rasterizeElementToCanvas(containerEl, targetCanvas, 400, 600, 'sepia', pdfCanvas)
+    const result = rasterizeElementToCanvas(containerEl, targetCanvas, 400, 600, 'sepia', pdfCanvas)
 
+    expect(result).toBe(true)
     expect(mockCtx.drawImage).toHaveBeenCalledWith(pdfCanvas, 0, 0, targetCanvas.width, targetCanvas.height)
   })
 
@@ -101,10 +102,22 @@ describe('pageRasterizer - Rasterização de Texturas 3D', () => {
     containerEl.appendChild(h1)
     containerEl.appendChild(p)
 
-    rasterizeElementToCanvas(containerEl, targetCanvas, 400, 600, 'white')
+    const result = rasterizeElementToCanvas(containerEl, targetCanvas, 400, 600, 'white')
 
+    expect(result).toBe(true)
     expect(mockCtx.fillText).toHaveBeenCalled()
     const allDrawnText = mockCtx.fillText.mock.calls.map((c: any[]) => c[0]).join(' ')
     expect(allDrawnText).toContain('Memórias Póstumas')
+  })
+
+  it('rasterizeElementToCanvas faz fallback para texto puro se o contêiner não possuir tags específicas', () => {
+    const targetCanvas = document.createElement('canvas')
+    const containerEl = document.createElement('div')
+    containerEl.textContent = 'Texto genérico em um contêiner customizado sem tags semânticas.'
+
+    const result = rasterizeElementToCanvas(containerEl, targetCanvas, 400, 600, 'sepia')
+
+    expect(result).toBe(true)
+    expect(mockCtx.fillText).toHaveBeenCalled()
   })
 })
