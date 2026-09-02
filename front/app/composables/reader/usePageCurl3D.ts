@@ -50,7 +50,7 @@ export function evaluate3DPagePoint(
     v: uvFront.v,
   }
 
-  if (p <= 0.0001) {
+  if (p <= 0.01) {
     return {
       pos: { x, y, z: 0 },
       normal: { x: 0, y: 0, z: 1 },
@@ -255,7 +255,7 @@ const VERTEX_SHADER = `
     vec3 pos = position;
     float p = clamp(uProgress, 0.0, 1.0);
 
-    if (p <= 0.0001) {
+    if (p <= 0.01) {
       vNormalVec = vec3(0.0, 0.0, 1.0);
       vCurlZ = 0.0;
       vFacing = 1.0;
@@ -596,6 +596,9 @@ export function usePageCurl3D(canvasHostRef: Ref<HTMLCanvasElement | null>) {
       u.uPageWidth.value = currentWidth
       u.uPageHeight.value = currentHeight
       u.uRadius.value = Math.max(32, currentWidth * 0.14)
+      u.uProgress.value = 0.0
+      u.uGripY.value = 0.5
+      u.uPointerDeltaY.value = 0.0
       u.uDirection.value = currentDirection === 'next' ? 1.0 : -1.0
       u.uIsTwoPage.value = isTwoPageMode ? 1.0 : 0.0
       u.uFrontTexture.value = frontTexture

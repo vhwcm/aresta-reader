@@ -74,7 +74,7 @@ export function usePagePhysics(options: PagePhysicsOptions = {}) {
     gripY.value = clampedRelativeY
     gripRegion.value = determineGripRegion(point.y, pageHeight)
     pointerDeltaY.value = 0
-    progress.value = 0.01
+    progress.value = 0
     isDragging.value = true
     isAnimating.value = true
 
@@ -211,7 +211,7 @@ export function usePagePhysics(options: PagePhysicsOptions = {}) {
     activeDirection.value = direction
     gripY.value = fromGripY
     pointerDeltaY.value = 0
-    progress.value = 0.01
+    progress.value = 0
     isDragging.value = false
     isAnimating.value = true
 

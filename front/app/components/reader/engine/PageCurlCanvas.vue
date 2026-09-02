@@ -22,16 +22,16 @@
         :style="{ backgroundColor: themeBgColor }"
       >
         <!-- MODO 2 PÁGINAS -->
-        <template v-if="pageLayout.isTwoPage">
+        <template v-if="renderedLayout.isTwoPage">
           <!-- Pilha de Páginas Lidas (Borda Esquerda) -->
           <div
-            v-if="pageCreaseEnabled && pageAnimationEnabled && pageStackDepth.leftWidth > 0 && pageLayout.leftPage && pageLayout.leftPage.pageNumber > 0"
+            v-if="pageCreaseEnabled && pageAnimationEnabled && pageStackDepth.leftWidth > 0 && renderedLayout.leftPage && renderedLayout.leftPage.pageNumber > 0"
             class="book-page-stack book-page-stack--left"
             :style="{
-              left: `${pageLayout.leftPage.left - pageStackDepth.leftWidth}px`,
-              top: `${pageLayout.leftPage.top}px`,
+              left: `${renderedLayout.leftPage.left - pageStackDepth.leftWidth}px`,
+              top: `${renderedLayout.leftPage.top}px`,
               width: `${pageStackDepth.leftWidth}px`,
-              height: `${pageLayout.leftPage.height}px`,
+              height: `${renderedLayout.leftPage.height}px`,
             }"
             @click.stop="requestTurn('previous')"
             :title="`Páginas lidas (${store.currentPage - 1} de ${store.totalPages} páginas - Voltar)`"
@@ -42,13 +42,17 @@
 
           <!-- Página Esquerda Base -->
           <div
-            v-if="pageLayout.leftPage && pageLayout.leftPage.pageNumber > 0"
-            class="page-sheet page-sheet--left page-sheet--base"
+            v-if="renderedLayout.leftPage && renderedLayout.leftPage.pageNumber > 0"
+            :class="[
+              'page-sheet',
+              'page-sheet--left',
+              'page-sheet--base',
+            ]"
             :style="{
-              left: `${pageLayout.leftPage.left}px`,
-              top: `${pageLayout.leftPage.top}px`,
-              width: `${pageLayout.leftPage.width}px`,
-              height: `${pageLayout.leftPage.height}px`,
+              left: `${renderedLayout.leftPage.left}px`,
+              top: `${renderedLayout.leftPage.top}px`,
+              width: `${renderedLayout.leftPage.width}px`,
+              height: `${renderedLayout.leftPage.height}px`,
             }"
           >
             <canvas
@@ -67,28 +71,19 @@
             />
           </div>
 
-          <!-- Lombada Central (Vinco) -->
-          <div
-            v-if="pageCreaseEnabled && pageAnimationEnabled && pageLayout.leftPage && pageLayout.rightPage && pageLayout.leftPage.pageNumber > 0 && pageLayout.rightPage.pageNumber > 0"
-            class="book-spine-divider"
-            :style="{
-              left: `${pageLayout.leftPage.left + pageLayout.leftPage.width - 16}px`,
-              top: `${pageLayout.leftPage.top}px`,
-              width: '32px',
-              height: `${pageLayout.leftPage.height}px`,
-            }"
-            aria-hidden="true"
-          />
-
           <!-- Página Direita Base -->
           <div
-            v-if="pageLayout.rightPage && pageLayout.rightPage.pageNumber > 0"
-            class="page-sheet page-sheet--right page-sheet--base"
+            v-if="renderedLayout.rightPage && renderedLayout.rightPage.pageNumber > 0"
+            :class="[
+              'page-sheet',
+              'page-sheet--right',
+              'page-sheet--base',
+            ]"
             :style="{
-              left: `${pageLayout.rightPage.left}px`,
-              top: `${pageLayout.rightPage.top}px`,
-              width: `${pageLayout.rightPage.width}px`,
-              height: `${pageLayout.rightPage.height}px`,
+              left: `${renderedLayout.rightPage.left}px`,
+              top: `${renderedLayout.rightPage.top}px`,
+              width: `${renderedLayout.rightPage.width}px`,
+              height: `${renderedLayout.rightPage.height}px`,
             }"
           >
             <canvas
@@ -109,13 +104,13 @@
 
           <!-- Pilha de Páginas Restantes (Borda Direita) -->
           <div
-            v-if="pageCreaseEnabled && pageAnimationEnabled && pageStackDepth.rightWidth > 0 && pageLayout.rightPage && pageLayout.rightPage.pageNumber > 0"
+            v-if="pageCreaseEnabled && pageAnimationEnabled && pageStackDepth.rightWidth > 0 && renderedLayout.rightPage && renderedLayout.rightPage.pageNumber > 0"
             class="book-page-stack book-page-stack--right"
             :style="{
-              left: `${pageLayout.rightPage.left + pageLayout.rightPage.width}px`,
-              top: `${pageLayout.rightPage.top}px`,
+              left: `${renderedLayout.rightPage.left + renderedLayout.rightPage.width}px`,
+              top: `${renderedLayout.rightPage.top}px`,
               width: `${pageStackDepth.rightWidth}px`,
-              height: `${pageLayout.rightPage.height}px`,
+              height: `${renderedLayout.rightPage.height}px`,
             }"
             @click.stop="requestTurn('next')"
             :title="`Páginas restantes (${store.totalPages - store.currentPage} de ${store.totalPages} páginas - Avançar)`"
@@ -126,16 +121,16 @@
         </template>
 
         <!-- MODO 1 PÁGINA (DESKTOP/TABLET / MOBILE) -->
-        <template v-else-if="pageLayout.singlePage && pageLayout.singlePage.pageNumber > 0">
+        <template v-else-if="renderedLayout.singlePage && renderedLayout.singlePage.pageNumber > 0">
           <!-- Pilha de Páginas Lidas (Borda Esquerda no Modo 1 Página) -->
           <div
             v-if="pageCreaseEnabled && pageAnimationEnabled && pageStackDepth.leftWidth > 0"
             class="book-page-stack book-page-stack--left"
             :style="{
-              left: `${pageLayout.singlePage.left - pageStackDepth.leftWidth}px`,
-              top: `${pageLayout.singlePage.top}px`,
+              left: `${renderedLayout.singlePage.left - pageStackDepth.leftWidth}px`,
+              top: `${renderedLayout.singlePage.top}px`,
               width: `${pageStackDepth.leftWidth}px`,
-              height: `${pageLayout.singlePage.height}px`,
+              height: `${renderedLayout.singlePage.height}px`,
             }"
             @click.stop="requestTurn('previous')"
             :title="`Páginas lidas (${store.currentPage - 1} de ${store.totalPages} páginas - Voltar)`"
@@ -145,12 +140,16 @@
           />
 
           <div
-            class="page-sheet page-sheet--single page-sheet--base"
+            :class="[
+              'page-sheet',
+              'page-sheet--single',
+              'page-sheet--base',
+            ]"
             :style="{
-              left: `${pageLayout.singlePage.left}px`,
-              top: `${pageLayout.singlePage.top}px`,
-              width: `${pageLayout.singlePage.width}px`,
-              height: `${pageLayout.singlePage.height}px`,
+              left: `${renderedLayout.singlePage.left}px`,
+              top: `${renderedLayout.singlePage.top}px`,
+              width: `${renderedLayout.singlePage.width}px`,
+              height: `${renderedLayout.singlePage.height}px`,
             }"
           >
             <canvas
@@ -173,10 +172,10 @@
             v-if="pageCreaseEnabled && pageAnimationEnabled && pageStackDepth.rightWidth > 0"
             class="book-page-stack book-page-stack--right"
             :style="{
-              left: `${pageLayout.singlePage.left + pageLayout.singlePage.width}px`,
-              top: `${pageLayout.singlePage.top}px`,
+              left: `${renderedLayout.singlePage.left + renderedLayout.singlePage.width}px`,
+              top: `${renderedLayout.singlePage.top}px`,
               width: `${pageStackDepth.rightWidth}px`,
-              height: `${pageLayout.singlePage.height}px`,
+              height: `${renderedLayout.singlePage.height}px`,
             }"
             @click.stop="requestTurn('next')"
             :title="`Páginas restantes (${store.totalPages - store.currentPage} de ${store.totalPages} páginas - Avançar)`"
@@ -225,7 +224,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useReaderStore } from '~/stores/readerStore'
 import { useSettings } from '~/composables/useSettings'
-import { useBookPageTurn } from '~/composables/reader/useBookPageTurn'
+import { useBookPageTurn, type PageLayoutInfo } from '~/composables/reader/useBookPageTurn'
 import { usePagePhysics } from '~/composables/reader/usePagePhysics'
 import { usePageCurl3D } from '~/composables/reader/usePageCurl3D'
 import { DRAG_ACTIVATION_THRESHOLD_PX } from '~/composables/reader/constants'
@@ -301,6 +300,19 @@ const isPreparing = ref(false)
 const errorMessage = ref<string | null>(null)
 const is3DActive = ref(false)
 const currentDirection = ref<PageTurnDirection>('next')
+const animationLayout = ref<PageLayoutInfo | null>(null)
+const renderedLayout = computed(() => (
+  is3DActive.value && animationLayout.value ? animationLayout.value : pageLayout.value
+))
+
+function snapshotLayout(layout: PageLayoutInfo): PageLayoutInfo {
+  return {
+    isTwoPage: layout.isTwoPage,
+    leftPage: layout.leftPage ? { ...layout.leftPage } : null,
+    rightPage: layout.rightPage ? { ...layout.rightPage } : null,
+    singlePage: layout.singlePage ? { ...layout.singlePage } : null,
+  }
+}
 
 let activePointerId: number | null = null
 let currentRenderVersion = 0
@@ -362,6 +374,7 @@ const physics = usePagePhysics({
 
     // 2. Só agora oculta a folha 3D, garantindo continuidade perfeita sem flash de cor
     is3DActive.value = false
+    animationLayout.value = null
     emit('transition-state', false)
 
     // P3: Processa virada pendente da fila (cliques rápidos em sequência)
@@ -375,6 +388,7 @@ const physics = usePagePhysics({
     await renderCurrentSpread()
     await nextTick()
     is3DActive.value = false
+    animationLayout.value = null
     emit('transition-state', false)
 
     // P3: Processa virada pendente da fila mesmo após cancelamento
@@ -397,7 +411,9 @@ const castShadowOpacity = computed(() => {
 
 // Posicionamento do Canvas WebGL 3D sobreposto
 const webglCanvasStyle = computed(() => {
-  const layout = pageLayout.value
+  const layout = is3DActive.value && animationLayout.value
+    ? animationLayout.value
+    : pageLayout.value
   const visible = is3DActive.value
 
   if (layout.isTwoPage) {
@@ -783,7 +799,7 @@ async function prepare3DTextures(direction: PageTurnDirection, gripY = 0.5): Pro
   pageCurl3D.setupScene({ isTwoPage, pageWidth: pageW, pageHeight: pageH, direction })
   pageCurl3D.setTextures(frontCanvas, backCanvas)
   pageCurl3D.updateUniforms({
-    progress: 0.001,
+    progress: 0,
     direction,
     isTwoPage,
     gripY,
@@ -916,8 +932,12 @@ async function activateDrag(
   currentPoint: DragPoint,
   activationToken: number,
 ) {
+  animationLayout.value = snapshotLayout(pageLayout.value)
   await prepare3DTextures(direction, relY)
-  if (activationToken !== dragActivationToken || activePointerId === null) return
+  if (activationToken !== dragActivationToken || activePointerId === null) {
+    animationLayout.value = null
+    return
+  }
 
   is3DActive.value = true
   emit('transition-state', true)
@@ -998,6 +1018,7 @@ async function requestTurn(direction: PageTurnDirection) {
   const h = targetPageRect?.height || 600
   const travelWidth = layout.isTwoPage ? w * 2 : w
 
+  animationLayout.value = snapshotLayout(pageLayout.value)
   await prepare3DTextures(direction, 0.5)
   is3DActive.value = true
   emit('transition-state', true)
@@ -1143,13 +1164,13 @@ defineExpose({
 }
 
 .page-sheet--left {
-  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.45);
+  box-shadow: inset -7px 0 12px -8px rgba(0, 0, 0, 0.5), -4px 0 20px rgba(0, 0, 0, 0.45);
   border-left: 1px solid rgba(255, 255, 255, 0.04);
   border-right: 1px solid rgba(0, 0, 0, 0.12);
 }
 
 .page-sheet--right {
-  box-shadow: 4px 0 20px rgba(0, 0, 0, 0.45);
+  box-shadow: inset 7px 0 12px -8px rgba(0, 0, 0, 0.5), 4px 0 20px rgba(0, 0, 0, 0.45);
   border-left: 1px solid rgba(0, 0, 0, 0.12);
   border-right: 1px solid rgba(255, 255, 255, 0.04);
 }
@@ -1161,17 +1182,27 @@ defineExpose({
 }
 
 .theme-sepia .page-sheet--left,
-.theme-sepia .page-sheet--right,
 .theme-sepia .page-sheet--single {
-  box-shadow: 0 4px 20px rgba(60, 45, 20, 0.16);
+  box-shadow: inset -7px 0 12px -8px rgba(80, 60, 30, 0.35), 0 4px 20px rgba(60, 45, 20, 0.16);
+  border-left-color: rgba(140, 110, 70, 0.2);
+  border-right-color: rgba(140, 110, 70, 0.2);
+}
+
+.theme-sepia .page-sheet--right {
+  box-shadow: inset 7px 0 12px -8px rgba(80, 60, 30, 0.35), 0 4px 20px rgba(60, 45, 20, 0.16);
   border-left-color: rgba(140, 110, 70, 0.2);
   border-right-color: rgba(140, 110, 70, 0.2);
 }
 
 .theme-white .page-sheet--left,
-.theme-white .page-sheet--right,
 .theme-white .page-sheet--single {
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  box-shadow: inset -7px 0 12px -8px rgba(0, 0, 0, 0.18), 0 4px 20px rgba(0, 0, 0, 0.08);
+  border-left-color: rgba(0, 0, 0, 0.08);
+  border-right-color: rgba(0, 0, 0, 0.08);
+}
+
+.theme-white .page-sheet--right {
+  box-shadow: inset 7px 0 12px -8px rgba(0, 0, 0, 0.18), 0 4px 20px rgba(0, 0, 0, 0.08);
   border-left-color: rgba(0, 0, 0, 0.08);
   border-right-color: rgba(0, 0, 0, 0.08);
 }
@@ -1214,20 +1245,6 @@ defineExpose({
   pointer-events: auto;
   user-select: text;
   -webkit-user-select: text;
-}
-
-.book-spine-divider {
-  position: absolute;
-  pointer-events: none;
-  z-index: 15;
-  background: linear-gradient(
-    to right,
-    rgba(0, 0, 0, 0) 0%,
-    rgba(0, 0, 0, 0.06) 35%,
-    rgba(0, 0, 0, 0.22) 50%,
-    rgba(0, 0, 0, 0.06) 65%,
-    rgba(0, 0, 0, 0) 100%
-  );
 }
 
 /* ================= PILHAS LATERAIS DE PÁGINAS (PAGE STACK EDGES) ================= */
