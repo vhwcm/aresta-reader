@@ -792,15 +792,6 @@ async function prepare3DTextures(direction: PageTurnDirection, gripY = 0.5): Pro
   })
   pageCurl3D.render()
 
-  // No modo de livro aberto, deixa a folha que será revelada pronta sob a animação.
-  if (isTwoPage) {
-    const revealedPage = direction === 'next' ? left + 3 : left - 2
-    const targetCanvas = direction === 'next' ? baseRightCanvasRef.value : baseLeftCanvasRef.value
-    const targetText = direction === 'next' ? baseRightTextLayerRef.value : baseLeftTextLayerRef.value
-    if (revealedPage >= 1 && revealedPage <= total) {
-      void renderPageToElement(revealedPage, targetCanvas, targetText, pageW, pageH)
-    }
-  }
 }
 
 function pointFrom(event: PointerEvent): DragPoint {
