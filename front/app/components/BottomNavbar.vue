@@ -1,7 +1,7 @@
 <template>
   <div
-    v-if="!route.path.startsWith('/reader') && !route.path.startsWith('/canvas/')"
-    class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 flex items-center justify-center pointer-events-auto"
+    class="fixed left-1/2 -translate-x-1/2 z-50 flex items-center justify-center pointer-events-auto transition-all duration-300"
+    :class="route.path.startsWith('/reader') ? 'bottom-16 md:bottom-5' : 'bottom-5'"
     role="navigation"
     aria-label="Navegação Principal"
   >

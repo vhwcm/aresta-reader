@@ -78,4 +78,35 @@ describe('BottomNavbar Component', () => {
     expect(wrapper.text()).toContain('Conversor')
     expect(wrapper.text()).toContain('Livros')
   })
+
+  it('continues to render during reader route (/reader) with responsive spacing', () => {
+    const g = (typeof globalThis !== 'undefined' ? globalThis : global) as any
+    const originalUseRoute = g.useRoute
+    g.useRoute = () => ({
+      path: '/reader',
+      params: {},
+      query: { bookId: '1' },
+      hash: '',
+      fullPath: '/reader?bookId=1'
+    })
+
+    const wrapper = mount(BottomNavbar, {
+      global: {
+        stubs: {
+          NuxtLink: {
+            template: '<a><slot /></a>'
+          },
+          ArestaLogoGraph: {
+            template: '<div class="aresta-logo-mock" />'
+          }
+        }
+      }
+    })
+
+    expect(wrapper.find('nav').exists()).toBe(true)
+    expect(wrapper.find('[role="navigation"]').classes()).toContain('bottom-16')
+    expect(wrapper.find('[role="navigation"]').classes()).toContain('md:bottom-5')
+
+    g.useRoute = originalUseRoute
+  })
 })
