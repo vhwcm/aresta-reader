@@ -33,6 +33,8 @@
               width: `${pageStackDepth.leftWidth}px`,
               height: `${renderedLayout.leftPage.height}px`,
             }"
+            @pointerdown.stop
+            @pointerup.stop
             @click.stop="requestTurn('previous')"
             :title="`Páginas lidas (${store.currentPage - 1} de ${store.totalPages} páginas - Voltar)`"
             role="button"
@@ -112,6 +114,8 @@
               width: `${pageStackDepth.rightWidth}px`,
               height: `${renderedLayout.rightPage.height}px`,
             }"
+            @pointerdown.stop
+            @pointerup.stop
             @click.stop="requestTurn('next')"
             :title="`Páginas restantes (${store.totalPages - store.currentPage} de ${store.totalPages} páginas - Avançar)`"
             role="button"
@@ -132,6 +136,8 @@
               width: `${pageStackDepth.leftWidth}px`,
               height: `${renderedLayout.singlePage.height}px`,
             }"
+            @pointerdown.stop
+            @pointerup.stop
             @click.stop="requestTurn('previous')"
             :title="`Páginas lidas (${store.currentPage - 1} de ${store.totalPages} páginas - Voltar)`"
             role="button"
@@ -177,6 +183,8 @@
               width: `${pageStackDepth.rightWidth}px`,
               height: `${renderedLayout.singlePage.height}px`,
             }"
+            @pointerdown.stop
+            @pointerup.stop
             @click.stop="requestTurn('next')"
             :title="`Páginas restantes (${store.totalPages - store.currentPage} de ${store.totalPages} páginas - Avançar)`"
             role="button"
@@ -330,6 +338,7 @@ let pendingDrag: PendingDrag | null = null
 
 // P3: Fila de virada pendente (máx. 1) para cliques rápidos em sequência
 let pendingTurnDirection: PageTurnDirection | null = null
+let lastTurnTriggerTime = 0
 
 // Layout de Páginas
 const { pageLayout } = useBookPageTurn(stageRef)
@@ -993,15 +1002,27 @@ function onPointerCancel(event: PointerEvent) {
 async function requestTurn(direction: PageTurnDirection) {
   if (!store.document) return
 
-  // P5/P6: Validação de limites usando getTargetPage
-  const targetPage = getTargetPage(direction)
-  if (targetPage === store.currentPage) return
+  const now = performance.now()
 
-  // P3: Se uma animação está em andamento, enfileira a virada
+  // P3: Se uma animação está em andamento:
   if (physics.isAnimating.value) {
+    // Rejeita qualquer clique duplicado sintético emitido pelo navegador logo após o pointerup (< 350ms)
+    if (now - lastTurnTriggerTime < 350) {
+      return
+    }
     pendingTurnDirection = direction
     return
   }
+
+  // Previne disparo duplo acidental por múltiplos eventos associados ao mesmo clique (< 250ms)
+  if (now - lastTurnTriggerTime < 250) {
+    return
+  }
+  lastTurnTriggerTime = now
+
+  // P5/P6: Validação de limites usando getTargetPage
+  const targetPage = getTargetPage(direction)
+  if (targetPage === store.currentPage) return
 
   // Navegação instantânea quando a viragem 3D estiver desativada
   if (!pageAnimationEnabled.value) {
