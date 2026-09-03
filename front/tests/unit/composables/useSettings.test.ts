@@ -95,47 +95,58 @@ describe('useSettings Composable', () => {
     expect(language.value).toBe('en-US')
   })
 
-  it('permite alterar e obter o tema visual (dark/light/sepia)', () => {
-    const { themeMode, setThemeMode, toggleThemeMode } = useSettings()
+  it('permite alterar e obter o tema visual (dark/light/sepia) sincronizando com readerTheme', () => {
+    const { themeMode, readerTheme, setThemeMode, toggleThemeMode } = useSettings()
 
     expect(themeMode.value).toBe('light')
+    expect(readerTheme.value).toBe('white')
 
     setThemeMode('dark')
     expect(themeMode.value).toBe('dark')
+    expect(readerTheme.value).toBe('black')
     let saved = JSON.parse(localStorage.getItem('aresta_settings') || '{}')
     expect(saved.themeMode).toBe('dark')
+    expect(saved.readerTheme).toBe('black')
+    expect(localStorage.getItem('aresta_reader_theme')).toBe('black')
 
     setThemeMode('sepia')
     expect(themeMode.value).toBe('sepia')
+    expect(readerTheme.value).toBe('sepia')
     saved = JSON.parse(localStorage.getItem('aresta_settings') || '{}')
     expect(saved.themeMode).toBe('sepia')
+    expect(saved.readerTheme).toBe('sepia')
+    expect(localStorage.getItem('aresta_reader_theme')).toBe('sepia')
 
     // toggleThemeMode cycles: sepia -> dark -> light -> sepia
     toggleThemeMode()
     expect(themeMode.value).toBe('dark')
+    expect(readerTheme.value).toBe('black')
 
     toggleThemeMode()
     expect(themeMode.value).toBe('light')
+    expect(readerTheme.value).toBe('white')
 
     toggleThemeMode()
     expect(themeMode.value).toBe('sepia')
+    expect(readerTheme.value).toBe('sepia')
   })
 
-  it('permite alterar e obter o tema de fundo de leitura independente', () => {
-    const { readerTheme, setReaderTheme } = useSettings()
-
-    expect(readerTheme.value).toBe('sepia')
+  it('permite alterar o tema a partir do leitor sincronizando o tema do app', () => {
+    const { readerTheme, themeMode, setReaderTheme } = useSettings()
 
     setReaderTheme('white')
     expect(readerTheme.value).toBe('white')
+    expect(themeMode.value).toBe('light')
     expect(localStorage.getItem('aresta_reader_theme')).toBe('white')
 
     setReaderTheme('black')
     expect(readerTheme.value).toBe('black')
+    expect(themeMode.value).toBe('dark')
     expect(localStorage.getItem('aresta_reader_theme')).toBe('black')
 
     setReaderTheme('sepia')
     expect(readerTheme.value).toBe('sepia')
+    expect(themeMode.value).toBe('sepia')
     expect(localStorage.getItem('aresta_reader_theme')).toBe('sepia')
   })
 

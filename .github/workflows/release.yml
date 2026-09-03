@@ -35,7 +35,7 @@ jobs:
           cache-dependency-path: front/package-lock.json
       - name: Install Frontend Dependencies
         working-directory: ./front
-        run: npm ci
+        run: npm ci || npm install
       - name: Build Android APK
         working-directory: ./front
         run: |
@@ -72,7 +72,7 @@ jobs:
           cache-dependency-path: front/package-lock.json
       - name: Install Frontend Dependencies
         working-directory: ./front
-        run: npm ci
+        run: npm ci || npm install
       - name: Build Desktop
         working-directory: ./front
         run: npx tauri build
