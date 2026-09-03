@@ -175,10 +175,10 @@ function drawNodeWords(
       for (let i = 0; i < rects.length; i++) {
         const wr = rects[i]!
         if (
-          wr.bottom > containerRect.top + 1 &&
-          wr.top < containerRect.bottom - 1 &&
-          wr.left >= containerRect.left + 0.5 &&
-          wr.right <= containerRect.right - 0.5
+          wr.bottom > containerRect.top - 2 &&
+          wr.top < containerRect.bottom + 2 &&
+          wr.right > containerRect.left - 2 &&
+          wr.left < containerRect.right + 2
         ) {
           const x = wr.left - containerRect.left
           const y = wr.top - containerRect.top + fontSize * 0.82

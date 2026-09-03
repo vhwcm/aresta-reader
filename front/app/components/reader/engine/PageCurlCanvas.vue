@@ -566,7 +566,7 @@ async function renderPageToCanvasTexture(
   }
 
   // 2. Se houver elemento visível no DOM com filhos (frente da página já visível na tela)
-  if (visibleSourceEl && visibleSourceEl.children.length > 0 && doc.type !== 'epub') {
+  if (visibleSourceEl && visibleSourceEl.children.length > 0) {
     const drawn = rasterizeElementToCanvas(
       visibleSourceEl,
       targetCanvas,
@@ -1585,8 +1585,8 @@ defineExpose({
 
 .page-text-layer :deep(.epub-text-layer-content h1),
 .page-text-layer :deep(.epub-text-layer-content .chapter-title),
-.page-text-layer :deep(.epub-text-layer-content .title),
-.page-text-layer :deep(.epub-text-layer-content [class*="title"]) {
+.page-text-layer :deep(.epub-text-layer-content .book-title),
+.page-text-layer :deep(.epub-text-layer-content .title) {
   font-size: 2em !important;
   font-weight: 700 !important;
   line-height: 1.25 !important;
@@ -1597,8 +1597,8 @@ defineExpose({
 
 .page-text-layer :deep(.epub-text-layer-content h2),
 .page-text-layer :deep(.epub-text-layer-content .chapter-subtitle),
-.page-text-layer :deep(.epub-text-layer-content .subtitle),
-.page-text-layer :deep(.epub-text-layer-content [class*="subtitle"]) {
+.page-text-layer :deep(.epub-text-layer-content .book-subtitle),
+.page-text-layer :deep(.epub-text-layer-content .subtitle) {
   font-size: 1.5em !important;
   font-weight: 700 !important;
   line-height: 1.3 !important;

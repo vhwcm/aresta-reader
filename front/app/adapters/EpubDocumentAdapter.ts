@@ -386,7 +386,7 @@ const EPUB_TYPOGRAPHY_STYLES = `
     overflow: hidden !important;
     box-sizing: border-box !important;
   }
-  .epub-text-layer-content h1, .epub-text-layer-content .chapter-title, .epub-text-layer-content .title, .epub-text-layer-content [class*="title"] {
+  .epub-text-layer-content h1, .epub-text-layer-content .chapter-title, .epub-text-layer-content .book-title, .epub-text-layer-content .title {
     font-size: 2em !important;
     font-weight: 700 !important;
     line-height: 1.25 !important;
@@ -398,7 +398,7 @@ const EPUB_TYPOGRAPHY_STYLES = `
     break-before: auto !important;
     page-break-before: auto !important;
   }
-  .epub-text-layer-content h2, .epub-text-layer-content .chapter-subtitle, .epub-text-layer-content .subtitle, .epub-text-layer-content [class*="subtitle"] {
+  .epub-text-layer-content h2, .epub-text-layer-content .chapter-subtitle, .epub-text-layer-content .book-subtitle, .epub-text-layer-content .subtitle {
     font-size: 1.5em !important;
     font-weight: 700 !important;
     line-height: 1.3 !important;
@@ -532,7 +532,7 @@ const EPUB_TYPOGRAPHY_STYLES = `
 function isCoverSection(section: FoliateSection | null, doc: Document | null): boolean {
   if (section) {
     const idLower = (section.id || '').toLowerCase()
-    if (idLower.includes('cover') || idLower.includes('capa') || idLower.includes('titlepage')) {
+    if (idLower.includes('cover') || idLower.includes('capa')) {
       return true
     }
   }
