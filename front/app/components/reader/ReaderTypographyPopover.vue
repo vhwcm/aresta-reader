@@ -35,15 +35,15 @@
           </button>
         </div>
 
-        <!-- Seletor de Tema / Fundo da Leitura -->
+        <!-- Seletor de Tema / Fundo da Leitura & App -->
         <div class="space-y-2">
           <label class="text-[11px] font-semibold text-textSecondary uppercase tracking-wider block">
-            Fundo da Leitura
+            Fundo da Leitura & Tema
           </label>
           <div class="grid grid-cols-3 gap-2">
             <!-- Amarelado / Sépia (Estilo Livro) -->
             <button
-              @click="store.setReaderTheme('sepia')"
+              @click="handleThemeSelect('sepia')"
               class="flex flex-col items-center justify-center p-3 rounded-xl border transition-all text-center group relative"
               :class="store.readerTheme === 'sepia'
                 ? 'bg-[#f5eedc]/15 border-amber-400/60 shadow-sm text-white'
@@ -59,7 +59,7 @@
 
             <!-- Branco -->
             <button
-              @click="store.setReaderTheme('white')"
+              @click="handleThemeSelect('white')"
               class="flex flex-col items-center justify-center p-3 rounded-xl border transition-all text-center group relative"
               :class="store.readerTheme === 'white'
                 ? 'bg-white/15 border-white/60 shadow-sm text-white'
@@ -75,7 +75,7 @@
 
             <!-- Preto -->
             <button
-              @click="store.setReaderTheme('black')"
+              @click="handleThemeSelect('black')"
               class="flex flex-col items-center justify-center p-3 rounded-xl border transition-all text-center group relative"
               :class="store.readerTheme === 'black'
                 ? 'bg-white/10 border-accent/80 shadow-sm text-white'
@@ -183,7 +183,8 @@
 <script setup lang="ts">
 import { CheckIcon, TypeIcon, XIcon } from 'lucide-vue-next'
 import { useReaderTypography, type TypographyFont } from '~/composables/useReaderTypography'
-import { useReaderStore } from '~/stores/readerStore'
+import { useSettings } from '~/composables/useSettings'
+import { useReaderStore, type ReaderColorTheme } from '~/stores/readerStore'
 
 defineProps<{
   isOpen: boolean
@@ -194,7 +195,13 @@ const emit = defineEmits<{
 }>()
 
 const store = useReaderStore()
+const { setReaderTheme } = useSettings()
 const { fonts, activeFontId, setFont } = useReaderTypography()
+
+function handleThemeSelect(theme: ReaderColorTheme) {
+  setReaderTheme(theme)
+  store.setReaderTheme(theme)
+}
 
 function handleSelectFont(font: TypographyFont) {
   setFont(font.id)

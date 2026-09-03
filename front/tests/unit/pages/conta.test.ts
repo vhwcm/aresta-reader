@@ -55,12 +55,13 @@ describe('Conta Page (/conta)', () => {
     expect(wrapper.text()).toContain('Deletar Minha Conta')
   })
 
-  it('permite alternar entre modo claro, escuro e amarelado (livro/kindle)', async () => {
+  it('permite alternar o tema unificado do app e de leitura (claro, escuro, livro)', async () => {
     const wrapper = mount(ContaPage, {
       global: {
         stubs: defaultStubs,
       },
     })
+    const { readerTheme } = useSettings()
 
     const lightBtn = wrapper.find('[data-testid="theme-light-btn"]')
     const darkBtn = wrapper.find('[data-testid="theme-dark-btn"]')
@@ -74,39 +75,20 @@ describe('Conta Page (/conta)', () => {
     // Clica para ativar modo escuro
     await darkBtn.trigger('click')
     expect(wrapper.text()).toContain('Escuro (Dark)')
+    expect(readerTheme.value).toBe('black')
+    expect(localStorage.getItem('aresta_reader_theme')).toBe('black')
 
     // Clica para ativar modo livro/sepia
     await sepiaBtn.trigger('click')
     expect(wrapper.text()).toContain('Amarelado (Kindle / Livro)')
+    expect(readerTheme.value).toBe('sepia')
+    expect(localStorage.getItem('aresta_reader_theme')).toBe('sepia')
 
     // Clica para voltar ao modo claro
     await lightBtn.trigger('click')
     expect(wrapper.text()).toContain('Claro (Light)')
-  })
-
-  it('permite configurar o fundo de leitura independente no painel da conta', async () => {
-    const wrapper = mount(ContaPage, {
-      global: {
-        stubs: defaultStubs,
-      },
-    })
-
-    const sepiaReaderBtn = wrapper.find('[data-testid="reader-theme-sepia-btn"]')
-    const whiteReaderBtn = wrapper.find('[data-testid="reader-theme-white-btn"]')
-    const blackReaderBtn = wrapper.find('[data-testid="reader-theme-black-btn"]')
-
-    expect(sepiaReaderBtn.exists()).toBe(true)
-    expect(whiteReaderBtn.exists()).toBe(true)
-    expect(blackReaderBtn.exists()).toBe(true)
-
-    await whiteReaderBtn.trigger('click')
+    expect(readerTheme.value).toBe('white')
     expect(localStorage.getItem('aresta_reader_theme')).toBe('white')
-
-    await blackReaderBtn.trigger('click')
-    expect(localStorage.getItem('aresta_reader_theme')).toBe('black')
-
-    await sepiaReaderBtn.trigger('click')
-    expect(localStorage.getItem('aresta_reader_theme')).toBe('sepia')
   })
 
   it('permite alternar o switch de Virada de Página 3D (Efeito Folhear)', async () => {

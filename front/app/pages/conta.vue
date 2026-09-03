@@ -125,7 +125,7 @@
       </div>
 
       <div class="flex flex-col rounded-3xl bg-bgPanel border border-divider divide-y divide-divider overflow-hidden shadow-sm">
-        <!-- 1. Tema Visual do App (Escuro, Claro, Livro) -->
+        <!-- 1. Tema Visual do App & Leitura (Escuro, Claro, Livro) -->
         <div class="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div class="flex items-start sm:items-center gap-4 min-w-0">
             <div class="p-3 rounded-2xl bg-accent/10 border border-accent/20 text-accent shrink-0">
@@ -135,7 +135,7 @@
             </div>
             <div class="flex flex-col gap-0.5">
               <div class="font-interface text-sm font-medium text-textPrimary flex items-center gap-2">
-                <span>Tema da Interface</span>
+                <span>Tema do Aplicativo & Leitura</span>
                 <span
                   class="px-2 py-0.5 rounded-full font-technical text-[10px] font-semibold"
                   :class="themeMode === 'sepia' ? 'bg-amber-400/15 text-amber-500 dark:text-amber-300 border border-amber-400/30' : (themeMode === 'dark' ? 'bg-black/5 dark:bg-white/10 text-textSecondary' : 'bg-accent/15 text-accent border border-accent/30')"
@@ -144,7 +144,7 @@
                 </span>
               </div>
               <p class="font-interface text-xs text-textSecondary">
-                Escolha entre o tema escuro editorial, claro suave ou o visual amarelado estilo livro físico / Kindle.
+                Escolha entre o tema escuro editorial, claro suave ou o visual amarelado estilo livro físico / Kindle. O tema selecionado é aplicado uniformemente em todo o aplicativo e no leitor.
               </p>
             </div>
           </div>
@@ -179,62 +179,6 @@
             >
               <span class="w-3 h-3 rounded-full bg-[#f5eedc] inline-block border border-amber-900/30"></span>
               <span>Livro</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- 1.5. Fundo da Leitura de Livros (PDF & EPUB) -->
-        <div class="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div class="flex items-start sm:items-center gap-4 min-w-0">
-            <div class="p-3 rounded-2xl bg-accent/10 border border-accent/20 text-accent shrink-0">
-              <PaletteIcon class="w-5 h-5" />
-            </div>
-            <div class="flex flex-col gap-0.5">
-              <div class="font-interface text-sm font-medium text-textPrimary flex items-center gap-2">
-                <span>Fundo da Leitura (Leitor)</span>
-                <span class="px-2 py-0.5 rounded-full font-technical text-[10px] font-semibold bg-accent/15 text-accent border border-accent/30">
-                  {{ readerTheme === 'sepia' ? 'Amarelado (Livro)' : (readerTheme === 'white' ? 'Branco' : 'Preto') }}
-                </span>
-              </div>
-              <p class="font-interface text-xs text-textSecondary">
-                Personalização independente da cor de papel/fundo da área de leitura de PDFs e EPUBs.
-              </p>
-            </div>
-          </div>
-
-          <div class="flex items-center p-1 rounded-2xl bg-black/5 dark:bg-white/5 border border-divider shrink-0 gap-1">
-            <button
-              type="button"
-              @click="setReaderTheme('sepia')"
-              data-testid="reader-theme-sepia-btn"
-              class="px-3 py-1.5 rounded-xl font-interface text-xs font-medium transition-all flex items-center gap-1.5"
-              :class="readerTheme === 'sepia' ? 'bg-amber-400/20 text-amber-600 dark:text-amber-300 border border-amber-400/40 shadow-sm font-semibold' : 'text-textSecondary hover:text-textPrimary'"
-              title="Amarelado estilo livro físico"
-            >
-              <span class="w-3 h-3 rounded-full bg-[#f5eedc] inline-block border border-amber-900/30"></span>
-              <span>Livro</span>
-            </button>
-            <button
-              type="button"
-              @click="setReaderTheme('white')"
-              data-testid="reader-theme-white-btn"
-              class="px-3 py-1.5 rounded-xl font-interface text-xs font-medium transition-all flex items-center gap-1.5"
-              :class="readerTheme === 'white' ? 'bg-white/20 text-textPrimary border border-white/40 shadow-sm font-semibold' : 'text-textSecondary hover:text-textPrimary'"
-              title="Branco clássico"
-            >
-              <span class="w-3 h-3 rounded-full bg-[#ffffff] inline-block border border-slate-400"></span>
-              <span>Branco</span>
-            </button>
-            <button
-              type="button"
-              @click="setReaderTheme('black')"
-              data-testid="reader-theme-black-btn"
-              class="px-3 py-1.5 rounded-xl font-interface text-xs font-medium transition-all flex items-center gap-1.5"
-              :class="readerTheme === 'black' ? 'bg-white/10 text-textPrimary border border-white/30 shadow-sm font-semibold' : 'text-textSecondary hover:text-textPrimary'"
-              title="Preto noturno"
-            >
-              <span class="w-3 h-3 rounded-full bg-[#121214] inline-block border border-white/30"></span>
-              <span>Preto</span>
             </button>
           </div>
         </div>
@@ -868,7 +812,6 @@ const {
   canEnablePageCrease,
   desktopHomeGraphOpen,
   themeMode,
-  readerTheme,
   nativeLanguage,
   targetTranslationLanguage,
   epubFontSize,
@@ -877,7 +820,6 @@ const {
   setPageCreaseEnabled,
   setDesktopHomeGraphOpen,
   setThemeMode,
-  setReaderTheme,
   setNativeLanguage,
   setTargetTranslationLanguage,
   setEpubFontSize,

@@ -50,6 +50,18 @@ export interface UserSettingsResponse {
   updatedAt?: string | null
 }
 
+export function themeModeToReaderTheme(mode: ThemeMode): ReaderColorTheme {
+  if (mode === 'dark') return 'black'
+  if (mode === 'sepia') return 'sepia'
+  return 'white'
+}
+
+export function readerThemeToThemeMode(theme: ReaderColorTheme): ThemeMode {
+  if (theme === 'black') return 'dark'
+  if (theme === 'sepia') return 'sepia'
+  return 'light'
+}
+
 const getAuthApiUrl = () => {
   if (typeof useRuntimeConfig === 'function') {
     try {
@@ -76,7 +88,7 @@ const settings = reactive<SettingsState>({
   desktopReaderGraphOpen: false,
   readerTwoPageMode: true,
   readerWidthMode: 'centered',
-  readerTheme: 'sepia',
+  readerTheme: 'white',
 })
 
 let isInitialized = false
@@ -94,7 +106,7 @@ export function resetSettingsForTesting() {
   settings.desktopReaderGraphOpen = false
   settings.readerTwoPageMode = true
   settings.readerWidthMode = 'centered'
-  settings.readerTheme = 'sepia'
+  settings.readerTheme = 'white'
   isInitialized = false
 }
 
@@ -151,9 +163,10 @@ function initSettings() {
       }
       if (parsed.themeMode === 'dark' || parsed.themeMode === 'light' || parsed.themeMode === 'sepia') {
         settings.themeMode = parsed.themeMode
-      }
-      if (parsed.readerTheme === 'white' || parsed.readerTheme === 'sepia' || parsed.readerTheme === 'black') {
+        settings.readerTheme = themeModeToReaderTheme(parsed.themeMode)
+      } else if (parsed.readerTheme === 'white' || parsed.readerTheme === 'sepia' || parsed.readerTheme === 'black') {
         settings.readerTheme = parsed.readerTheme
+        settings.themeMode = readerThemeToThemeMode(parsed.readerTheme)
       }
       if (typeof parsed.desktopHomeGraphOpen === 'boolean') {
         settings.desktopHomeGraphOpen = parsed.desktopHomeGraphOpen
@@ -171,7 +184,10 @@ function initSettings() {
 
     const legacyReaderTheme = localStorage.getItem('aresta_reader_theme')
     if (legacyReaderTheme === 'white' || legacyReaderTheme === 'sepia' || legacyReaderTheme === 'black') {
-      settings.readerTheme = legacyReaderTheme as ReaderColorTheme
+      if (!saved) {
+        settings.readerTheme = legacyReaderTheme as ReaderColorTheme
+        settings.themeMode = readerThemeToThemeMode(legacyReaderTheme as ReaderColorTheme)
+      }
     }
 
     const legacyTwoPage = localStorage.getItem('aresta_reader_two_page')
@@ -201,6 +217,7 @@ function initSettings() {
     // ignorar falha de parse
   }
 
+  settings.readerTheme = themeModeToReaderTheme(settings.themeMode)
   applyTheme(settings.themeMode)
 }
 
@@ -231,6 +248,10 @@ function applyServerSettings(data: UserSettingsResponse) {
   }
   if (data.themeMode === 'dark' || data.themeMode === 'light' || data.themeMode === 'sepia') {
     settings.themeMode = data.themeMode
+    settings.readerTheme = themeModeToReaderTheme(data.themeMode)
+  } else if (data.readerTheme === 'white' || data.readerTheme === 'sepia' || data.readerTheme === 'black') {
+    settings.readerTheme = data.readerTheme
+    settings.themeMode = readerThemeToThemeMode(data.readerTheme)
   }
   if (typeof data.desktopHomeGraphOpen === 'boolean') {
     settings.desktopHomeGraphOpen = data.desktopHomeGraphOpen
@@ -359,7 +380,16 @@ export function useSettings() {
 
   const setThemeMode = (mode: ThemeMode) => {
     settings.themeMode = mode
+    const rTheme = themeModeToReaderTheme(mode)
+    settings.readerTheme = rTheme
     applyTheme(mode)
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('aresta_reader_theme', rTheme)
+      } catch {
+        // ignorar erro
+      }
+    }
     saveLocally()
     void persistToServer()
   }
@@ -372,7 +402,10 @@ export function useSettings() {
 
   const setReaderTheme = (theme: ReaderColorTheme) => {
     if (theme === 'white' || theme === 'sepia' || theme === 'black') {
+      const mode = readerThemeToThemeMode(theme)
       settings.readerTheme = theme
+      settings.themeMode = mode
+      applyTheme(mode)
       if (typeof window !== 'undefined') {
         try {
           localStorage.setItem('aresta_reader_theme', theme)

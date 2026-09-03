@@ -61,7 +61,9 @@ export const useReaderStore = defineStore('reader', {
           if (typeof parsed.epubFontSize === 'number') {
             defaultFontSize = Math.max(12, Math.min(36, Math.round(parsed.epubFontSize)))
           }
-          if (parsed.readerTheme === 'white' || parsed.readerTheme === 'sepia' || parsed.readerTheme === 'black') {
+          if (parsed.themeMode === 'dark' || parsed.themeMode === 'light' || parsed.themeMode === 'sepia') {
+            defaultReaderTheme = parsed.themeMode === 'sepia' ? 'sepia' : (parsed.themeMode === 'light' ? 'white' : 'black')
+          } else if (parsed.readerTheme === 'white' || parsed.readerTheme === 'sepia' || parsed.readerTheme === 'black') {
             defaultReaderTheme = parsed.readerTheme
           }
           if (parsed.epubFontFamily) {
@@ -140,7 +142,9 @@ export const useReaderStore = defineStore('reader', {
               this.document.setFontSize(parsedSize, this.currentPage)
             }
           }
-          if (parsed.readerTheme === 'white' || parsed.readerTheme === 'sepia' || parsed.readerTheme === 'black') {
+          if (parsed.themeMode === 'dark' || parsed.themeMode === 'light' || parsed.themeMode === 'sepia') {
+            this.readerTheme = parsed.themeMode === 'sepia' ? 'sepia' : (parsed.themeMode === 'light' ? 'white' : 'black')
+          } else if (parsed.readerTheme === 'white' || parsed.readerTheme === 'sepia' || parsed.readerTheme === 'black') {
             this.readerTheme = parsed.readerTheme
           }
           if (parsed.epubFontFamily) {
@@ -386,13 +390,31 @@ export const useReaderStore = defineStore('reader', {
     setReaderTheme(theme: ReaderColorTheme) {
       if (theme !== 'white' && theme !== 'sepia' && theme !== 'black') return
       this.readerTheme = theme
+      const mode = theme === 'sepia' ? 'sepia' : (theme === 'white' ? 'light' : 'dark')
       if (typeof window !== 'undefined') {
         try {
           localStorage.setItem('aresta_reader_theme', theme)
           const saved = localStorage.getItem('aresta_settings')
           const settings = saved ? JSON.parse(saved) : {}
           settings.readerTheme = theme
+          settings.themeMode = mode
           localStorage.setItem('aresta_settings', JSON.stringify(settings))
+
+          const root = document.documentElement
+          const body = document.body
+          root.setAttribute('data-theme', mode)
+          root.classList.remove('light-theme', 'dark-theme', 'sepia-theme', 'dark')
+          root.classList.add(`${mode}-theme`)
+          if (mode === 'dark') {
+            root.classList.add('dark')
+          }
+          if (body) {
+            body.classList.remove('light-theme', 'dark-theme', 'sepia-theme', 'dark')
+            body.classList.add(`${mode}-theme`)
+            if (mode === 'dark') {
+              body.classList.add('dark')
+            }
+          }
         } catch {
           // ignorar erro
         }
