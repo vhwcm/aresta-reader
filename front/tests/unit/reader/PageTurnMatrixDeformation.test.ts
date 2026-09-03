@@ -37,8 +37,11 @@ describe('Mapeamento da Matriz de Pontos e Deformação 3D durante a Virada de P
 
       const midPoint = evaluate3DPagePoint(W * 0.7, 0, W, H, 0.5, 'next', true)
       expect(midPoint.pos.z).toBeGreaterThan(0)
-      expect(midPoint.facing).toBe(-1.0)
-      expect(midPoint.sampledTexture).toBe('back')
+
+      const versoPoint = evaluate3DPagePoint(W * 0.85, 0, W, H, 0.5, 'next', true)
+      expect(versoPoint.pos.z).toBeGreaterThan(0)
+      expect(versoPoint.facing).toBe(-1.0)
+      expect(versoPoint.sampledTexture).toBe('back')
     })
 
     it('no meio da virada PREVIOUS (progress = 0.5), a folha esquerda dobra para a direita com Z > 0', () => {

@@ -800,6 +800,45 @@ async function prepare3DTextures(direction: PageTurnDirection, gripY = 0.5): Pro
   ])
   if (preparationVersion !== texturePreparationVersion || !store.document) return
 
+  // Atualiza a página base subjacente no lado que levanta para que, ao descolar da mesa,
+  // a folha revele a página seguinte/anterior correta sem duplicidade ou faixas de corte
+  if (isTwoPage) {
+    if (direction === 'next') {
+      const incomingRight = left + 3 <= total ? left + 3 : 0
+      if (incomingRight > 0 && layout.rightPage) {
+        void renderPageToElement(
+          incomingRight,
+          baseRightCanvasRef.value,
+          baseRightTextLayerRef.value,
+          layout.rightPage.width,
+          layout.rightPage.height,
+        )
+      }
+    } else {
+      const incomingLeft = left - 2 >= 1 ? left - 2 : 0
+      if (incomingLeft > 0 && layout.leftPage) {
+        void renderPageToElement(
+          incomingLeft,
+          baseLeftCanvasRef.value,
+          baseLeftTextLayerRef.value,
+          layout.leftPage.width,
+          layout.leftPage.height,
+        )
+      }
+    }
+  } else if (layout.singlePage) {
+    const incomingSingle = direction === 'next' ? current + 1 : current - 1
+    if (incomingSingle >= 1 && incomingSingle <= total) {
+      void renderPageToElement(
+        incomingSingle,
+        baseSingleCanvasRef.value,
+        baseSingleTextLayerRef.value,
+        layout.singlePage.width,
+        layout.singlePage.height,
+      )
+    }
+  }
+
   pageCurl3D.setupScene({
     isTwoPage,
     pageWidth: pageW,
