@@ -623,47 +623,29 @@ export function usePageCurl3D(canvasHostRef: Ref<HTMLCanvasElement | null>) {
     const u = shaderMaterial.uniforms as any
 
     if (frontCanvas && frontCanvas.width > 0 && frontCanvas.height > 0) {
-      if (
-        !frontTexture ||
-        frontTexture.image !== frontCanvas ||
-        frontTexture.image.width !== frontCanvas.width ||
-        frontTexture.image.height !== frontCanvas.height
-      ) {
-        if (frontTexture) {
-          frontTexture.dispose()
-        }
-        frontTexture = new THREE.CanvasTexture(frontCanvas)
-        frontTexture.minFilter = THREE.LinearFilter
-        frontTexture.magFilter = THREE.LinearFilter
-        frontTexture.generateMipmaps = false
-        const maxAniso = renderer?.capabilities?.getMaxAnisotropy ? renderer.capabilities.getMaxAnisotropy() : 1
-        frontTexture.anisotropy = Math.min(maxAniso, 16)
-        u.uFrontTexture.value = frontTexture
-      } else {
-        frontTexture.needsUpdate = true
+      if (frontTexture) {
+        frontTexture.dispose()
       }
+      frontTexture = new THREE.CanvasTexture(frontCanvas)
+      frontTexture.minFilter = THREE.LinearFilter
+      frontTexture.magFilter = THREE.LinearFilter
+      frontTexture.generateMipmaps = false
+      const maxAniso = renderer?.capabilities?.getMaxAnisotropy ? renderer.capabilities.getMaxAnisotropy() : 1
+      frontTexture.anisotropy = Math.min(maxAniso, 16)
+      u.uFrontTexture.value = frontTexture
     }
 
     if (backCanvas && backCanvas.width > 0 && backCanvas.height > 0) {
-      if (
-        !backTexture ||
-        backTexture.image !== backCanvas ||
-        backTexture.image.width !== backCanvas.width ||
-        backTexture.image.height !== backCanvas.height
-      ) {
-        if (backTexture) {
-          backTexture.dispose()
-        }
-        backTexture = new THREE.CanvasTexture(backCanvas)
-        backTexture.minFilter = THREE.LinearFilter
-        backTexture.magFilter = THREE.LinearFilter
-        backTexture.generateMipmaps = false
-        const maxAniso = renderer?.capabilities?.getMaxAnisotropy ? renderer.capabilities.getMaxAnisotropy() : 1
-        backTexture.anisotropy = Math.min(maxAniso, 16)
-        u.uBackTexture.value = backTexture
-      } else {
-        backTexture.needsUpdate = true
+      if (backTexture) {
+        backTexture.dispose()
       }
+      backTexture = new THREE.CanvasTexture(backCanvas)
+      backTexture.minFilter = THREE.LinearFilter
+      backTexture.magFilter = THREE.LinearFilter
+      backTexture.generateMipmaps = false
+      const maxAniso = renderer?.capabilities?.getMaxAnisotropy ? renderer.capabilities.getMaxAnisotropy() : 1
+      backTexture.anisotropy = Math.min(maxAniso, 16)
+      u.uBackTexture.value = backTexture
     }
 
     render()
