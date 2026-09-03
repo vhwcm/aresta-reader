@@ -96,10 +96,9 @@ export function evaluate3DPagePoint(
 
         if (dist < rollCircumference && dynamicRadius > 1.0) {
           const t = Math.max(0, Math.min(1, dist / rollCircumference))
-          const arcProgress = 0.5 * (1.0 - Math.cos(t * PI))
           deformedPos = {
-            x: x + (rotX - x) * arcProgress,
-            y: y + (rotY - y) * arcProgress,
+            x: rotX,
+            y: rotY,
             z: dynamicRadius * Math.sin(t * PI),
           }
           computedNormal = {
@@ -133,10 +132,9 @@ export function evaluate3DPagePoint(
 
         if (dist < rollCircumference && dynamicRadius > 1.0) {
           const t = Math.max(0, Math.min(1, dist / rollCircumference))
-          const arcProgress = 0.5 * (1.0 - Math.cos(t * PI))
           deformedPos = {
-            x: x + (rotX - x) * arcProgress,
-            y: y + (rotY - y) * arcProgress,
+            x: rotX,
+            y: rotY,
             z: dynamicRadius * Math.sin(t * PI),
           }
           computedNormal = {
@@ -172,10 +170,9 @@ export function evaluate3DPagePoint(
 
         if (dist < rollCircumference && dynamicRadius > 1.0) {
           const t = Math.max(0, Math.min(1, dist / rollCircumference))
-          const arcProgress = 0.5 * (1.0 - Math.cos(t * PI))
           deformedPos = {
-            x: x + (rotX - x) * arcProgress,
-            y: y + (rotY - y) * arcProgress,
+            x: rotX,
+            y: rotY,
             z: dynamicRadius * Math.sin(t * PI),
           }
           computedNormal = {
@@ -209,10 +206,9 @@ export function evaluate3DPagePoint(
 
         if (dist < rollCircumference && dynamicRadius > 1.0) {
           const t = Math.max(0, Math.min(1, dist / rollCircumference))
-          const arcProgress = 0.5 * (1.0 - Math.cos(t * PI))
           deformedPos = {
-            x: x + (rotX - x) * arcProgress,
-            y: y + (rotY - y) * arcProgress,
+            x: rotX,
+            y: rotY,
             z: dynamicRadius * Math.sin(t * PI),
           }
           computedNormal = {
@@ -306,9 +302,8 @@ const VERTEX_SHADER = `
 
           if (dist < rollCircumference && dynamicRadius > 1.0) {
             float t = clamp(dist / rollCircumference, 0.0, 1.0);
-            float arcProgress = 0.5 * (1.0 - cos(t * PI));
-            deformedPos.x = mix(pos.x, rotX, arcProgress);
-            deformedPos.y = mix(pos.y, rotY, arcProgress);
+            deformedPos.x = rotX;
+            deformedPos.y = rotY;
             deformedPos.z = max(0.5, dynamicRadius * sin(t * PI));
             computedNormal = normalize(vec3(sin(t * PI), 0.0, -1.0));
             facing = -1.0;
@@ -335,9 +330,8 @@ const VERTEX_SHADER = `
 
           if (dist < rollCircumference && dynamicRadius > 1.0) {
             float t = clamp(dist / rollCircumference, 0.0, 1.0);
-            float arcProgress = 0.5 * (1.0 - cos(t * PI));
-            deformedPos.x = mix(pos.x, rotX, arcProgress);
-            deformedPos.y = mix(pos.y, rotY, arcProgress);
+            deformedPos.x = rotX;
+            deformedPos.y = rotY;
             deformedPos.z = max(0.5, dynamicRadius * sin(t * PI));
             computedNormal = normalize(vec3(-sin(t * PI), 0.0, -1.0));
             facing = -1.0;
@@ -367,9 +361,8 @@ const VERTEX_SHADER = `
 
           if (dist < rollCircumference && dynamicRadius > 1.0) {
             float t = clamp(dist / rollCircumference, 0.0, 1.0);
-            float arcProgress = 0.5 * (1.0 - cos(t * PI));
-            deformedPos.x = mix(pos.x, rotX, arcProgress);
-            deformedPos.y = mix(pos.y, rotY, arcProgress);
+            deformedPos.x = rotX;
+            deformedPos.y = rotY;
             deformedPos.z = max(0.5, dynamicRadius * sin(t * PI));
             computedNormal = normalize(vec3(sin(t * PI), 0.0, -1.0));
             facing = -1.0;
@@ -396,9 +389,8 @@ const VERTEX_SHADER = `
 
           if (dist < rollCircumference && dynamicRadius > 1.0) {
             float t = clamp(dist / rollCircumference, 0.0, 1.0);
-            float arcProgress = 0.5 * (1.0 - cos(t * PI));
-            deformedPos.x = mix(pos.x, rotX, arcProgress);
-            deformedPos.y = mix(pos.y, rotY, arcProgress);
+            deformedPos.x = rotX;
+            deformedPos.y = rotY;
             deformedPos.z = max(0.5, dynamicRadius * sin(t * PI));
             computedNormal = normalize(vec3(-sin(t * PI), 0.0, -1.0));
             facing = -1.0;

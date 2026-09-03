@@ -82,6 +82,15 @@ describe('Mapeamento da Matriz de Pontos e Deformação 3D durante a Virada de P
         }
       }
     })
+
+    it('garante escala 1:1 sem distorção ou zoom horizontal na curvatura cilíndrica', () => {
+      const p = 0.5
+      const foldX = W * (1.0 - p)
+      const p1 = evaluate3DPagePoint(foldX + 30, 0, W, H, p, 'next', true)
+      const p2 = evaluate3DPagePoint(foldX + 50, 0, W, H, p, 'next', true)
+      const screenDeltaX = Math.abs(p2.pos.x - p1.pos.x)
+      expect(screenDeltaX).toBeCloseTo(20, 1)
+    })
   })
 
   describe('Modo 1 Página (Single-Page Mode)', () => {

@@ -93,7 +93,33 @@ No [usePageCurl3D.ts](file:///c:/Users/vichw/aresta-projeto/aresta-reader/front/
 
 ---
 
-## 4. Ordem das Texturas e Páginas
+## 4. Preservação de Escala 1:1 e Proibição de Zoom na Curvatura
+
+### O Problema do Zoom Excessivo
+No passado, tentou-se interpolar a posição $X$ entre o ponto original $pos.x$ e o ponto refletido $rotX$ usando:
+```glsl
+// INCORRETO: causa esticamento/zoom horizontal de até 237%
+float arcProgress = 0.5 * (1.0 - cos(t * PI));
+deformedPos.x = mix(pos.x, rotX, arcProgress);
+```
+Como $pos.x$ e $rotX$ se movem em sentidos opostos, a derivada $\frac{\partial x}{\partial dist}$ chegava a $-2.37$, inflando e esticando o texto horizontalmente de forma desproporcional e grotesca.
+
+### A Regra Inegociável
+- Na linha de dobra ($dist = 0$), $rotX = pos.x = foldX$. Os dois lados já se encontram com continuidade perfeita $C^0$.
+- Portanto, para toda a região dobrada ($dist > 0$), atribua diretamente as coordenadas refletidas:
+  ```glsl
+  deformedPos.x = rotX;
+  deformedPos.y = rotY;
+  ```
+- A curvatura 3D é modelada **exclusivamente no eixo Z** e nas normais de iluminação:
+  ```glsl
+  deformedPos.z = max(0.5, dynamicRadius * sin(t * PI));
+  ```
+- Isso garante que $|\frac{\partial rotX}{\partial pos.x}| = 1.0$ em toda a superfície, mantendo proporção de texto, entrelinha e tamanho de glifos rigorosamente idênticos aos da página estática (100% natural, **zero zoom**).
+
+---
+
+## 5. Ordem das Texturas e Páginas
 
 Ao folhear em **Modo 2 Páginas** (spread atual: `[curLeft, curRight]`):
 
