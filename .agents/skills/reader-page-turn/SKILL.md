@@ -136,9 +136,17 @@ Em **Modo 1 Página**:
 
 ---
 
-## 5. Prevenção de Flickering e Flash Branco
+## 6. Prevenção de Flickering, Estalos e Flash de Texto Incorreto
 
-Na conclusão do gesto (`onComplete` em `PageCurlCanvas.vue`):
+### No Início da Virada (`prepare3DTextures` em `PageCurlCanvas.vue`):
+1. Monte a cena 3D com as texturas `frontCanvas` (página atual) e `backCanvas` (verso).
+2. Renderize o primeiro frame Three.js estático com `progress = 0`.
+3. **Ative a folha 3D sobreposta PRIMEIRO (`is3DActive = true`)**:
+   - Como está em `progress = 0` com a textura idêntica, ela cobre a tela pixel a pixel sem qualquer salto visual.
+4. **Só após a folha 3D estar cobrindo a tela**, atualize a página base subjacente via `renderPageToElement`:
+   - **NUNCA** altere a página base do DOM antes de `is3DActive = true`. Fazer isso causava o "estalo/flash" onde a página seguinte aparecia no DOM visível por alguns milissegundos antes da camada 3D subir!
+
+### Na Conclusão do Gesto (`onComplete` em `PageCurlCanvas.vue`):
 1. Chame `store.goToPage(targetPage)`.
 2. Renderize a camada 2D definitiva por baixo PRIMEIRO:
    ```ts
@@ -150,11 +158,11 @@ Na conclusão do gesto (`onComplete` em `PageCurlCanvas.vue`):
    is3DActive.value = false
    emit('transition-state', false)
    ```
-Isso garante continuidade perfeita e ausência de flashes visuais.
+Isso garante continuidade perfeita, zero estalos e ausência total de flashes visuais.
 
 ---
 
-## 6. Procedimento de Testes Obrigatório
+## 7. Procedimento de Testes Obrigatório
 
 Sempre que alterar `usePageCurl3D.ts`, `PageCurlCanvas.vue` ou `usePagePhysics.ts`, execute obrigatoriamente:
 

@@ -754,6 +754,8 @@ async function renderCurrentSpread(pageOverride?: number): Promise<void> {
       layout.singlePage.height,
     )
   }
+
+  void prewarm3DTextures('next')
 }
 
 /**
@@ -800,7 +802,32 @@ async function prepare3DTextures(direction: PageTurnDirection, gripY = 0.5): Pro
   ])
   if (preparationVersion !== texturePreparationVersion || !store.document) return
 
-  // Atualiza a página base subjacente no lado que levanta para que, ao descolar da mesa,
+  pageCurl3D.setupScene({
+    isTwoPage,
+    pageWidth: pageW,
+    pageHeight: pageH,
+    direction,
+    bleedX: BLEED_X,
+    bleedY: BLEED_Y,
+  })
+  pageCurl3D.setTextures(frontCanvas, backCanvas)
+  pageCurl3D.updateUniforms({
+    progress: 0,
+    direction,
+    isTwoPage,
+    gripY,
+    pointerDeltaY: 0,
+    theme: activeTheme.value as any,
+  })
+  pageCurl3D.render()
+
+  // Ativa a camada 3D opaca em progress = 0 PRIMEIRO, cobrindo a página visível
+  // com a textura idêntica antes que o DOM subjacente seja modificado.
+  is3DActive.value = true
+  emit('transition-state', true)
+  await nextTick()
+
+  // Atualiza a página base subjacente por baixo da folha 3D já visível para que, ao descolar da mesa,
   // a folha revele a página seguinte/anterior correta sem duplicidade ou faixas de corte
   if (isTwoPage) {
     if (direction === 'next') {
@@ -838,25 +865,6 @@ async function prepare3DTextures(direction: PageTurnDirection, gripY = 0.5): Pro
       )
     }
   }
-
-  pageCurl3D.setupScene({
-    isTwoPage,
-    pageWidth: pageW,
-    pageHeight: pageH,
-    direction,
-    bleedX: BLEED_X,
-    bleedY: BLEED_Y,
-  })
-  pageCurl3D.setTextures(frontCanvas, backCanvas)
-  pageCurl3D.updateUniforms({
-    progress: 0,
-    direction,
-    isTwoPage,
-    gripY,
-    pointerDeltaY: 0,
-    theme: activeTheme.value as any,
-  })
-  pageCurl3D.render()
 
 }
 
