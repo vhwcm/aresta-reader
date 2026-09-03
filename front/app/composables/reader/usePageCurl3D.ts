@@ -1,11 +1,16 @@
 import { ref, onUnmounted, type Ref } from 'vue'
 import * as THREE from 'three'
 
+export const BLEED_X = 80
+export const BLEED_Y = 80
+
 export interface Page3DConfig {
   isTwoPage: boolean
   pageWidth: number
   pageHeight: number
   direction: 'next' | 'previous'
+  bleedX?: number
+  bleedY?: number
 }
 
 export interface VertexPoint {
@@ -66,9 +71,11 @@ export function evaluate3DPagePoint(
   const dynamicRadius = Math.max(0.0, uRadius * arcFactor)
   const rollCircumference = Math.max(1.0, PI * dynamicRadius)
 
-  const cornerBias = (0.5 - gripY) * 0.45
-  let angle = cornerBias * arcFactor - deltaY * 0.25
-  angle = Math.max(-0.30, Math.min(0.30, angle))
+  const cornerBias = (0.5 - gripY) * 0.24
+  let angle = (cornerBias - deltaY * 0.12) * arcFactor
+  angle = Math.max(-0.09, Math.min(0.09, angle))
+  const cosA = Math.cos(angle)
+  const sinA = Math.sin(angle)
 
   let deformedPos = { x, y, z: 0 }
   let computedNormal = { x: 0, y: 0, z: 1 }
@@ -77,15 +84,15 @@ export function evaluate3DPagePoint(
   if (isTwoPage) {
     if (direction === 'next') {
       const foldX = pageWidth * (1.0 - p)
-      const dist = (x - foldX) + (y * Math.sin(angle))
+      const dist = (x - foldX) * cosA + y * sinA
 
       if (dist <= 0.0) {
         deformedPos = { x, y, z: 0 }
         computedNormal = { x: 0, y: 0, z: 1 }
         facing = 1.0
       } else {
-        const rotX = 2.0 * foldX - x - y * Math.sin(angle)
-        const rotY = y - (x - foldX) * Math.sin(2.0 * angle)
+        const rotX = x - 2.0 * dist * cosA
+        const rotY = y - 2.0 * dist * sinA
 
         if (dist < rollCircumference && dynamicRadius > 1.0) {
           const t = Math.max(0, Math.min(1, dist / rollCircumference))
@@ -113,15 +120,15 @@ export function evaluate3DPagePoint(
     } else {
       // PREVIOUS (Two-Page)
       const foldX = -pageWidth * (1.0 - p)
-      const dist = (foldX - x) + (y * Math.sin(angle))
+      const dist = (foldX - x) * cosA + y * sinA
 
       if (dist <= 0.0) {
         deformedPos = { x, y, z: 0 }
         computedNormal = { x: 0, y: 0, z: 1 }
         facing = 1.0
       } else {
-        const rotX = 2.0 * foldX - x + y * Math.sin(angle)
-        const rotY = y - (foldX - x) * Math.sin(2.0 * angle)
+        const rotX = x + 2.0 * dist * cosA
+        const rotY = y - 2.0 * dist * sinA
 
         if (dist < rollCircumference && dynamicRadius > 1.0) {
           const t = Math.max(0, Math.min(1, dist / rollCircumference))
@@ -151,15 +158,15 @@ export function evaluate3DPagePoint(
     // SINGLE-PAGE MODE
     if (direction === 'next') {
       const foldX = pageWidth * (1.0 - p)
-      const dist = (x - foldX) + (y * Math.sin(angle))
+      const dist = (x - foldX) * cosA + y * sinA
 
       if (dist <= 0.0) {
         deformedPos = { x, y, z: 0 }
         computedNormal = { x: 0, y: 0, z: 1 }
         facing = 1.0
       } else {
-        const rotX = 2.0 * foldX - x - y * Math.sin(angle)
-        const rotY = y - (x - foldX) * Math.sin(2.0 * angle)
+        const rotX = x - 2.0 * dist * cosA
+        const rotY = y - 2.0 * dist * sinA
 
         if (dist < rollCircumference && dynamicRadius > 1.0) {
           const t = Math.max(0, Math.min(1, dist / rollCircumference))
@@ -187,15 +194,15 @@ export function evaluate3DPagePoint(
     } else {
       // PREVIOUS (Single-Page)
       const foldX = pageWidth * p
-      const dist = (foldX - x) + (y * Math.sin(angle))
+      const dist = (foldX - x) * cosA + y * sinA
 
       if (dist <= 0.0) {
         deformedPos = { x, y, z: 0 }
         computedNormal = { x: 0, y: 0, z: 1 }
         facing = 1.0
       } else {
-        const rotX = 2.0 * foldX - x + y * Math.sin(angle)
-        const rotY = y - (foldX - x) * Math.sin(2.0 * angle)
+        const rotX = x + 2.0 * dist * cosA
+        const rotY = y - 2.0 * dist * sinA
 
         if (dist < rollCircumference && dynamicRadius > 1.0) {
           const t = Math.max(0, Math.min(1, dist / rollCircumference))
@@ -268,10 +275,12 @@ const VERTEX_SHADER = `
     float dynamicRadius = max(0.0, uRadius * arcFactor);
     float rollCircumference = max(1.0, PI * dynamicRadius);
 
-    // Inclinação cônica diagonal quando puxado pelo canto
-    float cornerBias = (0.5 - uGripY) * 0.45;
-    float angle = cornerBias * arcFactor - uPointerDeltaY * 0.25;
-    angle = clamp(angle, -0.30, 0.30);
+    // Inclinação cônica diagonal quando puxado pelo canto, atenuada suavemente nas pontas
+    float cornerBias = (0.5 - uGripY) * 0.24;
+    float angle = (cornerBias - uPointerDeltaY * 0.12) * arcFactor;
+    angle = clamp(angle, -0.09, 0.09);
+    float cosA = cos(angle);
+    float sinA = sin(angle);
 
     vec3 deformedPos = pos;
     vec3 computedNormal = vec3(0.0, 0.0, 1.0);
@@ -281,15 +290,15 @@ const VERTEX_SHADER = `
       if (uDirection > 0.0) {
         // NEXT (Two-Page): Folha direita [0, W] dobra em direção à esquerda [-W, 0] ao redor da lombada (x = 0)
         float foldX = uPageWidth * (1.0 - p);
-        float dist = (pos.x - foldX) + (pos.y * sin(angle));
+        float dist = (pos.x - foldX) * cosA + pos.y * sinA;
 
         if (dist <= 0.0) {
           deformedPos.z = 0.0;
           computedNormal = vec3(0.0, 0.0, 1.0);
           facing = 1.0;
         } else {
-          float rotX = 2.0 * foldX - pos.x - pos.y * sin(angle);
-          float rotY = pos.y - (pos.x - foldX) * sin(2.0 * angle);
+          float rotX = pos.x - 2.0 * dist * cosA;
+          float rotY = pos.y - 2.0 * dist * sinA;
 
           if (dist < rollCircumference && dynamicRadius > 1.0) {
             float t = clamp(dist / rollCircumference, 0.0, 1.0);
@@ -309,15 +318,15 @@ const VERTEX_SHADER = `
       } else {
         // PREVIOUS (Two-Page): Folha esquerda [-W, 0] dobra em direção à direita [0, W] ao redor da lombada (x = 0)
         float foldX = -uPageWidth * (1.0 - p);
-        float dist = (foldX - pos.x) + (pos.y * sin(angle));
+        float dist = (foldX - pos.x) * cosA + pos.y * sinA;
 
         if (dist <= 0.0) {
           deformedPos.z = 0.0;
           computedNormal = vec3(0.0, 0.0, 1.0);
           facing = 1.0;
         } else {
-          float rotX = 2.0 * foldX - pos.x + pos.y * sin(angle);
-          float rotY = pos.y - (foldX - pos.x) * sin(2.0 * angle);
+          float rotX = pos.x + 2.0 * dist * cosA;
+          float rotY = pos.y - 2.0 * dist * sinA;
 
           if (dist < rollCircumference && dynamicRadius > 1.0) {
             float t = clamp(dist / rollCircumference, 0.0, 1.0);
@@ -340,15 +349,15 @@ const VERTEX_SHADER = `
       if (uDirection > 0.0) {
         // NEXT (Single-Page): Folha [0, W] dobra da direita em direção à esquerda
         float foldX = uPageWidth * (1.0 - p);
-        float dist = (pos.x - foldX) + (pos.y * sin(angle));
+        float dist = (pos.x - foldX) * cosA + pos.y * sinA;
 
         if (dist <= 0.0) {
           deformedPos.z = 0.0;
           computedNormal = vec3(0.0, 0.0, 1.0);
           facing = 1.0;
         } else {
-          float rotX = 2.0 * foldX - pos.x - pos.y * sin(angle);
-          float rotY = pos.y - (pos.x - foldX) * sin(2.0 * angle);
+          float rotX = pos.x - 2.0 * dist * cosA;
+          float rotY = pos.y - 2.0 * dist * sinA;
 
           if (dist < rollCircumference && dynamicRadius > 1.0) {
             float t = clamp(dist / rollCircumference, 0.0, 1.0);
@@ -368,15 +377,15 @@ const VERTEX_SHADER = `
       } else {
         // PREVIOUS (Single-Page): Folha [0, W] dobra da esquerda em direção à direita
         float foldX = uPageWidth * p;
-        float dist = (foldX - pos.x) + (pos.y * sin(angle));
+        float dist = (foldX - pos.x) * cosA + pos.y * sinA;
 
         if (dist <= 0.0) {
           deformedPos.z = 0.0;
           computedNormal = vec3(0.0, 0.0, 1.0);
           facing = 1.0;
         } else {
-          float rotX = 2.0 * foldX - pos.x + pos.y * sin(angle);
-          float rotY = pos.y - (foldX - pos.x) * sin(2.0 * angle);
+          float rotX = pos.x + 2.0 * dist * cosA;
+          float rotY = pos.y - 2.0 * dist * sinA;
 
           if (dist < rollCircumference && dynamicRadius > 1.0) {
             float t = clamp(dist / rollCircumference, 0.0, 1.0);
@@ -491,9 +500,11 @@ export function usePageCurl3D(canvasHostRef: Ref<HTMLCanvasElement | null>) {
     currentHeight = config.pageHeight
     isTwoPageMode = config.isTwoPage
     currentDirection = config.direction
+    const bleedX = config.bleedX ?? BLEED_X
+    const bleedY = config.bleedY ?? BLEED_Y
 
-    const totalCanvasWidth = isTwoPageMode ? currentWidth * 2 : currentWidth
-    const totalCanvasHeight = currentHeight
+    const totalCanvasWidth = currentWidth * 2 + bleedX * 2
+    const totalCanvasHeight = currentHeight + bleedY * 2
     const dpr = typeof window !== 'undefined' ? Math.max(2, Math.min(window.devicePixelRatio || 1, 3)) : 2
 
     if (!renderer) {
@@ -519,25 +530,14 @@ export function usePageCurl3D(canvasHostRef: Ref<HTMLCanvasElement | null>) {
       mesh = null
     }
 
-    if (isTwoPageMode) {
-      camera = new THREE.OrthographicCamera(
-        -currentWidth,
-        currentWidth,
-        currentHeight * 0.5,
-        -currentHeight * 0.5,
-        -2000,
-        2000,
-      )
-    } else {
-      camera = new THREE.OrthographicCamera(
-        0,
-        currentWidth,
-        currentHeight * 0.5,
-        -currentHeight * 0.5,
-        -2000,
-        2000,
-      )
-    }
+    camera = new THREE.OrthographicCamera(
+      -currentWidth - bleedX,
+      currentWidth + bleedX,
+      currentHeight * 0.5 + bleedY,
+      -currentHeight * 0.5 - bleedY,
+      -2000,
+      2000,
+    )
     camera.position.z = 800
 
     if (geometry) geometry.dispose()
@@ -546,14 +546,10 @@ export function usePageCurl3D(canvasHostRef: Ref<HTMLCanvasElement | null>) {
     const segmentsY = Math.max(64, Math.min(128, Math.round(currentHeight / 8)))
     geometry = new THREE.PlaneGeometry(currentWidth, currentHeight, segmentsX, segmentsY)
 
-    if (isTwoPageMode) {
-      if (currentDirection === 'next') {
-        geometry.translate(currentWidth * 0.5, 0, 0)
-      } else {
-        geometry.translate(-currentWidth * 0.5, 0, 0)
-      }
-    } else {
+    if (currentDirection === 'next') {
       geometry.translate(currentWidth * 0.5, 0, 0)
+    } else {
+      geometry.translate(-currentWidth * 0.5, 0, 0)
     }
 
     if (!frontTexture) {

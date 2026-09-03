@@ -155,4 +155,51 @@ describe('Mapeamento da Matriz de Pontos e Deformação 3D durante a Virada de P
       expect(midStep.z).toBeGreaterThanOrEqual(0)
     })
   })
+
+  describe('Prevenção de Cortes na Folha ao Puxar Muito (No Clipping / Bounds Safety)', () => {
+    it('em qualquer nível de tração (progress 0.0 a 1.0) e grip diagonal extremo, nenhum ponto excede os limites com sangria', () => {
+      const BLEED_X = 80
+      const BLEED_Y = 80
+      const progressSteps = [0.05, 0.2, 0.4, 0.6, 0.75, 0.85, 0.9, 0.95, 1.0]
+      const grips = [0.0, 0.2, 0.5, 0.8, 1.0] // Cantos e centro
+      const deltas = [-0.4, -0.2, 0.0, 0.2, 0.4] // Deslocamentos verticais extremos
+
+      const gridPoints = [
+        { x: 0, y: -H / 2 },
+        { x: 0, y: H / 2 },
+        { x: W / 2, y: 0 },
+        { x: W, y: -H / 2 },
+        { x: W, y: 0 },
+        { x: W, y: H / 2 },
+      ]
+
+      for (const p of progressSteps) {
+        for (const grip of grips) {
+          for (const delta of deltas) {
+            for (const pt of gridPoints) {
+              const sample = evaluate3DPagePoint(pt.x, pt.y, W, H, p, 'next', true, grip, delta)
+              // Verifica se a coordenada X permanece dentro da janela com sangria
+              expect(sample.pos.x).toBeGreaterThanOrEqual(-W - BLEED_X)
+              expect(sample.pos.x).toBeLessThanOrEqual(W + BLEED_X)
+
+              // Verifica se a coordenada Y permanece dentro da janela com sangria
+              expect(sample.pos.y).toBeGreaterThanOrEqual(-H * 0.5 - BLEED_Y)
+              expect(sample.pos.y).toBeLessThanOrEqual(H * 0.5 + BLEED_Y)
+            }
+          }
+        }
+      }
+    })
+
+    it('ao puxar muito (progress >= 0.9), a folha atenua o ângulo e aterrissa sem inclinação residual torta', () => {
+      const topCorner = evaluate3DPagePoint(W, H / 2, W, H, 1.0, 'next', true, 0.0, 0.3)
+      const bottomCorner = evaluate3DPagePoint(W, -H / 2, W, H, 1.0, 'next', true, 0.0, 0.3)
+
+      expect(topCorner.pos.x).toBeCloseTo(-W, 1)
+      expect(bottomCorner.pos.x).toBeCloseTo(-W, 1)
+      expect(topCorner.pos.y).toBeCloseTo(H / 2, 1)
+      expect(bottomCorner.pos.y).toBeCloseTo(-H / 2, 1)
+    })
+  })
 })
+

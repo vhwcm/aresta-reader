@@ -234,7 +234,7 @@ import { useReaderStore } from '~/stores/readerStore'
 import { useSettings } from '~/composables/useSettings'
 import { useBookPageTurn, type PageLayoutInfo } from '~/composables/reader/useBookPageTurn'
 import { usePagePhysics } from '~/composables/reader/usePagePhysics'
-import { usePageCurl3D } from '~/composables/reader/usePageCurl3D'
+import { usePageCurl3D, BLEED_X, BLEED_Y } from '~/composables/reader/usePageCurl3D'
 import { DRAG_ACTIVATION_THRESHOLD_PX } from '~/composables/reader/constants'
 import { rasterizeElementToCanvas, drawPlainTextToCanvas, applyThemeToCanvas } from '~/utils/pageRasterizer'
 import type { PageTurnDirection, DragPoint } from '~/interfaces/reader/types'
@@ -436,10 +436,10 @@ const webglCanvasStyle = computed(() => {
     return {
       display: 'block',
       position: 'absolute' as const,
-      left: `${leftEdge}px`,
-      top: `${topEdge}px`,
-      width: `${totalW}px`,
-      height: `${totalH}px`,
+      left: `${leftEdge - BLEED_X}px`,
+      top: `${topEdge - BLEED_Y}px`,
+      width: `${totalW + BLEED_X * 2}px`,
+      height: `${totalH + BLEED_Y * 2}px`,
       zIndex: 40,
       opacity: visible ? 1 : 0,
       visibility: (visible ? 'visible' : 'hidden') as any,
@@ -448,13 +448,16 @@ const webglCanvasStyle = computed(() => {
   }
 
   if (layout.singlePage) {
+    const pageW = layout.singlePage.width
+    const pageH = layout.singlePage.height
+
     return {
       display: 'block',
       position: 'absolute' as const,
-      left: `${layout.singlePage.left}px`,
-      top: `${layout.singlePage.top}px`,
-      width: `${layout.singlePage.width}px`,
-      height: `${layout.singlePage.height}px`,
+      left: `${layout.singlePage.left - pageW - BLEED_X}px`,
+      top: `${layout.singlePage.top - BLEED_Y}px`,
+      width: `${pageW * 2 + BLEED_X * 2}px`,
+      height: `${pageH + BLEED_Y * 2}px`,
       zIndex: 40,
       opacity: visible ? 1 : 0,
       visibility: (visible ? 'visible' : 'hidden') as any,
@@ -805,7 +808,14 @@ async function prepare3DTextures(direction: PageTurnDirection, gripY = 0.5): Pro
   ])
   if (preparationVersion !== texturePreparationVersion || !store.document) return
 
-  pageCurl3D.setupScene({ isTwoPage, pageWidth: pageW, pageHeight: pageH, direction })
+  pageCurl3D.setupScene({
+    isTwoPage,
+    pageWidth: pageW,
+    pageHeight: pageH,
+    direction,
+    bleedX: BLEED_X,
+    bleedY: BLEED_Y,
+  })
   pageCurl3D.setTextures(frontCanvas, backCanvas)
   pageCurl3D.updateUniforms({
     progress: 0,
