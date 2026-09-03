@@ -79,7 +79,7 @@ describe('BottomNavbar Component', () => {
     expect(wrapper.text()).toContain('Livros')
   })
 
-  it('continues to render during reader route (/reader) with responsive spacing', () => {
+  it('is hidden during book reading route (/reader) to preserve immersion', () => {
     const g = (typeof globalThis !== 'undefined' ? globalThis : global) as any
     const originalUseRoute = g.useRoute
     g.useRoute = () => ({
@@ -103,9 +103,8 @@ describe('BottomNavbar Component', () => {
       }
     })
 
-    expect(wrapper.find('nav').exists()).toBe(true)
-    expect(wrapper.find('[role="navigation"]').classes()).toContain('bottom-16')
-    expect(wrapper.find('[role="navigation"]').classes()).toContain('md:bottom-5')
+    expect(wrapper.find('nav').exists()).toBe(false)
+    expect(wrapper.find('[role="navigation"]').exists()).toBe(false)
 
     g.useRoute = originalUseRoute
   })
