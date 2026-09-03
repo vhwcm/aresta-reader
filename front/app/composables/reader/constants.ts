@@ -4,10 +4,10 @@
  */
 
 /** Percentual mínimo de arraste horizontal para confirmar a virada (0–1) */
-export const SNAP_THRESHOLD = 0.32
+export const SNAP_THRESHOLD = 0.18
 
 /** Velocidade mínima de flick para confirmar virada (px/ms normalizado) */
-export const FLICK_VELOCITY_THRESHOLD = 0.45
+export const FLICK_VELOCITY_THRESHOLD = 0.25
 
 /** Rigidez da mola de Hooke para animação de snap */
 export const SPRING_STIFFNESS = 180

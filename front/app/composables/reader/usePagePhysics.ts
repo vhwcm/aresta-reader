@@ -114,12 +114,19 @@ export function usePagePhysics(options: PagePhysicsOptions = {}) {
     if (!isDragging.value) return
     isDragging.value = false
 
-    if (point && lastPoint) {
+    if (point && lastPoint && startPoint) {
       const dt = Math.max(1, point.time - lastPoint.time) / 1000
       if (dt < 0.1) {
         const dx = point.x - lastPoint.x
         velocityX = dx / dt
       }
+      let rawDeltaX = 0
+      if (activeDirection.value === 'next') {
+        rawDeltaX = startPoint.x - point.x
+      } else {
+        rawDeltaX = point.x - startPoint.x
+      }
+      progress.value = Math.max(0, Math.min(1, rawDeltaX / pageWidth))
     }
 
     // Avalia se comete a virada ou cancela
@@ -128,7 +135,7 @@ export function usePagePhysics(options: PagePhysicsOptions = {}) {
 
     // Detecção de flick por velocidade (px/ms normalizado)
     const normalizedVelX = activeDirection.value === 'next' ? -velocityX : velocityX
-    if (normalizedVelX > flickVelocity * 1000 && currentProgress > 0.08) {
+    if (normalizedVelX > flickVelocity * 1000 && currentProgress > 0.04) {
       shouldCommit = true
     } else if (normalizedVelX < -flickVelocity * 1000 && currentProgress < 0.85) {
       shouldCommit = false

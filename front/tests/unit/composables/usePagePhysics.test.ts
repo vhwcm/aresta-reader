@@ -56,4 +56,33 @@ describe('usePagePhysics', () => {
     expect(physics.isAnimating.value).toBe(true)
     expect(physics.activeDirection.value).toBe('next')
   })
+
+  it('confirma a virada ao soltar a folha além do limiar responsivo (progress >= 0.18)', () => {
+    const onComplete = vi.fn()
+    const physics = usePagePhysics({ onComplete })
+
+    physics.startDrag({ x: 500, y: 350, time: 1000 }, 'next', 500, 700, 0.5)
+    // Puxa 100px (20% de 500px, ultrapassando SNAP_THRESHOLD = 0.18)
+    physics.updateDrag({ x: 400, y: 350, time: 1050 })
+    expect(physics.progress.value).toBeCloseTo(0.20, 2)
+
+    physics.endDrag({ x: 400, y: 350, time: 1050 })
+    // Avança o timer de animação da mola
+    vi.advanceTimersByTime(500)
+    expect(onComplete).toHaveBeenCalledWith('next')
+  })
+
+  it('confirma a virada com flick suave em velocidade moderada (> 0.25 px/ms)', () => {
+    const onComplete = vi.fn()
+    const physics = usePagePhysics({ onComplete })
+
+    physics.startDrag({ x: 500, y: 350, time: 1000 }, 'next', 500, 700, 0.5)
+    physics.updateDrag({ x: 460, y: 350, time: 1030 })
+
+    // Move 20px em 20ms = 1px/ms no instante final da soltura (flick veloz)
+    physics.endDrag({ x: 440, y: 350, time: 1050 })
+    vi.advanceTimersByTime(500)
+    expect(onComplete).toHaveBeenCalledWith('next')
+  })
 })
+

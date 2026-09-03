@@ -33,8 +33,6 @@
               width: `${pageStackDepth.leftWidth}px`,
               height: `${renderedLayout.leftPage.height}px`,
             }"
-            @pointerdown.stop
-            @pointerup.stop
             @click.stop="requestTurn('previous')"
             :title="`Páginas lidas (${store.currentPage - 1} de ${store.totalPages} páginas - Voltar)`"
             role="button"
@@ -114,8 +112,6 @@
               width: `${pageStackDepth.rightWidth}px`,
               height: `${renderedLayout.rightPage.height}px`,
             }"
-            @pointerdown.stop
-            @pointerup.stop
             @click.stop="requestTurn('next')"
             :title="`Páginas restantes (${store.totalPages - store.currentPage} de ${store.totalPages} páginas - Avançar)`"
             role="button"
@@ -136,8 +132,6 @@
               width: `${pageStackDepth.leftWidth}px`,
               height: `${renderedLayout.singlePage.height}px`,
             }"
-            @pointerdown.stop
-            @pointerup.stop
             @click.stop="requestTurn('previous')"
             :title="`Páginas lidas (${store.currentPage - 1} de ${store.totalPages} páginas - Voltar)`"
             role="button"
@@ -183,8 +177,6 @@
               width: `${pageStackDepth.rightWidth}px`,
               height: `${renderedLayout.singlePage.height}px`,
             }"
-            @pointerdown.stop
-            @pointerup.stop
             @click.stop="requestTurn('next')"
             :title="`Páginas restantes (${store.totalPages - store.currentPage} de ${store.totalPages} páginas - Avançar)`"
             role="button"
@@ -913,9 +905,22 @@ function onPointerMove(event: PointerEvent) {
 
     // Se o usuário já selecionou texto na janela, cancela o arraste para priorizar o menu de contexto/anotação
     const selection = typeof window !== 'undefined' ? window.getSelection() : null
-    if (selection && selection.toString().trim().length > 0) {
+    const hasSelection = Boolean(selection && selection.toString().trim().length > 0)
+
+    // Se o arraste começou na borda/ponta da folha (margens laterais ou pilhas de página)
+    const bounds = stageRef.value?.getBoundingClientRect()
+    const isEdgeZone = bounds
+      ? (pendingDrag.direction === 'next' ? pendingDrag.startPoint.x > bounds.width * 0.70 : pendingDrag.startPoint.x < bounds.width * 0.30)
+      : true
+
+    if (hasSelection && !isEdgeZone) {
       pendingDrag = null
       return
+    }
+
+    if (hasSelection && isEdgeZone) {
+      // Na borda/ponta da página, limpa seleção acidental nativa e ativa a virada
+      selection?.removeAllRanges()
     }
 
     // Limiar atingido: ativa virada 3D
@@ -953,8 +958,15 @@ async function activateDrag(
 ) {
   animationLayout.value = snapshotLayout(pageLayout.value)
   await prepare3DTextures(direction, relY)
-  if (activationToken !== dragActivationToken || activePointerId === null) {
+  if (activationToken !== dragActivationToken) {
     animationLayout.value = null
+    return
+  }
+
+  // Se o usuário já soltou o ponteiro durante a preparação da textura (arraste/flick rápido)
+  if (activePointerId === null) {
+    animationLayout.value = null
+    void requestTurn(direction)
     return
   }
 
