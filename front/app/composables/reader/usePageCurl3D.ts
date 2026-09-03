@@ -309,13 +309,13 @@ const VERTEX_SHADER = `
             float arcProgress = 0.5 * (1.0 - cos(t * PI));
             deformedPos.x = mix(pos.x, rotX, arcProgress);
             deformedPos.y = mix(pos.y, rotY, arcProgress);
-            deformedPos.z = dynamicRadius * sin(t * PI);
+            deformedPos.z = max(0.5, dynamicRadius * sin(t * PI));
             computedNormal = normalize(vec3(sin(t * PI), 0.0, cos(t * PI)));
             facing = t < 0.5 ? 1.0 : -1.0;
           } else {
             deformedPos.x = rotX;
             deformedPos.y = rotY;
-            deformedPos.z = 0.0;
+            deformedPos.z = max(0.5, (1.0 - p) * 14.0);
             computedNormal = vec3(0.0, 0.0, -1.0);
             facing = -1.0;
           }
@@ -338,13 +338,13 @@ const VERTEX_SHADER = `
             float arcProgress = 0.5 * (1.0 - cos(t * PI));
             deformedPos.x = mix(pos.x, rotX, arcProgress);
             deformedPos.y = mix(pos.y, rotY, arcProgress);
-            deformedPos.z = dynamicRadius * sin(t * PI);
+            deformedPos.z = max(0.5, dynamicRadius * sin(t * PI));
             computedNormal = normalize(vec3(-sin(t * PI), 0.0, cos(t * PI)));
             facing = t < 0.5 ? 1.0 : -1.0;
           } else {
             deformedPos.x = rotX;
             deformedPos.y = rotY;
-            deformedPos.z = 0.0;
+            deformedPos.z = max(0.5, (1.0 - p) * 14.0);
             computedNormal = vec3(0.0, 0.0, -1.0);
             facing = -1.0;
           }
@@ -370,13 +370,13 @@ const VERTEX_SHADER = `
             float arcProgress = 0.5 * (1.0 - cos(t * PI));
             deformedPos.x = mix(pos.x, rotX, arcProgress);
             deformedPos.y = mix(pos.y, rotY, arcProgress);
-            deformedPos.z = dynamicRadius * sin(t * PI);
+            deformedPos.z = max(0.5, dynamicRadius * sin(t * PI));
             computedNormal = normalize(vec3(sin(t * PI), 0.0, cos(t * PI)));
             facing = t < 0.5 ? 1.0 : -1.0;
           } else {
             deformedPos.x = rotX;
             deformedPos.y = rotY;
-            deformedPos.z = max(0.0, (1.0 - p) * 12.0);
+            deformedPos.z = max(0.5, (1.0 - p) * 14.0);
             computedNormal = vec3(0.0, 0.0, -1.0);
             facing = -1.0;
           }
@@ -399,13 +399,13 @@ const VERTEX_SHADER = `
             float arcProgress = 0.5 * (1.0 - cos(t * PI));
             deformedPos.x = mix(pos.x, rotX, arcProgress);
             deformedPos.y = mix(pos.y, rotY, arcProgress);
-            deformedPos.z = dynamicRadius * sin(t * PI);
+            deformedPos.z = max(0.5, dynamicRadius * sin(t * PI));
             computedNormal = normalize(vec3(-sin(t * PI), 0.0, cos(t * PI)));
             facing = t < 0.5 ? 1.0 : -1.0;
           } else {
             deformedPos.x = rotX;
             deformedPos.y = rotY;
-            deformedPos.z = max(0.0, (1.0 - p) * 12.0);
+            deformedPos.z = max(0.5, (1.0 - p) * 14.0);
             computedNormal = vec3(0.0, 0.0, -1.0);
             facing = -1.0;
           }
@@ -435,9 +435,8 @@ const FRAGMENT_SHADER = `
     vec3 lightDir = normalize(vec3(0.15, 0.25, 0.95));
     vec3 norm = normalize(vNormalVec);
 
-    // vFacing > 0 é a folha plana estacionária na mesa (frente)
-    // vFacing <= 0 é a folha curvada e refletida (verso)
-    if (vFacing > 0.0) {
+    // Detecção geométrica precisa de face por hardware (gl_FrontFacing)
+    if (gl_FrontFacing) {
       vec4 frontTex = texture2D(uFrontTexture, vUv);
       vec3 paperBase = frontTex.rgb;
 
@@ -448,7 +447,7 @@ const FRAGMENT_SHADER = `
       float ambientShadow = clamp(vCurlZ * 0.0015, 0.0, 0.12) * uShadowIntensity;
 
       vec3 finalRgb = paperBase * lightFactor * (1.0 - ambientShadow);
-      gl_FragColor = vec4(finalRgb, frontTex.a);
+      gl_FragColor = vec4(finalRgb, 1.0);
     } else {
       vec2 backUv = vec2(1.0 - vUv.x, vUv.y);
       vec4 backTex = texture2D(uBackTexture, backUv);
@@ -461,7 +460,7 @@ const FRAGMENT_SHADER = `
       float ambientShadow = clamp(vCurlZ * 0.0015, 0.0, 0.12) * uShadowIntensity;
 
       vec3 finalRgb = paperBase * lightFactor * (1.0 - ambientShadow);
-      gl_FragColor = vec4(finalRgb, backTex.a);
+      gl_FragColor = vec4(finalRgb, 1.0);
     }
   }
 `

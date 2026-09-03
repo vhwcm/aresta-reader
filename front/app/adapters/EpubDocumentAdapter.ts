@@ -652,8 +652,8 @@ function calculateSectionPages(
   try {
     const safeW = Math.max(320, pageWidth)
     const safeH = Math.max(400, pageHeight)
-    const paddingX = safeW > 700 ? 40 : (safeW > 500 ? 28 : 16)
-    const paddingY = safeH > 700 ? 36 : 24
+    const paddingX = safeW > 700 ? 48 : (safeW > 500 ? 38 : 32)
+    const paddingY = safeH > 700 ? 40 : 30
     const colWidth = safeW - (2 * paddingX)
     const colGap = paddingX * 2
 
@@ -1022,8 +1022,8 @@ export class EpubDocumentAdapter implements IBookDocument {
       this._pageWidth = width
       this._pageHeight = height
 
-      const paddingX = width > 700 ? 40 : (width > 500 ? 28 : 16)
-      const paddingY = height > 700 ? 36 : 24
+      const paddingX = width > 700 ? 48 : (width > 500 ? 38 : 32)
+      const paddingY = height > 700 ? 40 : 30
       const colWidth = width - (2 * paddingX)
       const colGap = paddingX * 2
       const colOffset = mapping.pageIndexInSection * width

@@ -92,8 +92,8 @@ export function drawPlainTextToCanvas(
   ctx.font = `${fontSize}px ${fontFamily}`
   ctx.fillStyle = textColor
 
-  const paddingX = width > 700 ? 40 : (width > 500 ? 28 : 20)
-  const paddingY = height > 700 ? 40 : (height > 500 ? 32 : 24)
+  const paddingX = width > 700 ? 48 : (width > 500 ? 38 : 32)
+  const paddingY = height > 700 ? 40 : (height > 500 ? 32 : 28)
   const maxWidth = width - (2 * paddingX)
   let y = paddingY + fontSize
 
