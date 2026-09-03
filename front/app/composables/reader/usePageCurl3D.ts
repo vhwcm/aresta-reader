@@ -50,7 +50,7 @@ export function evaluate3DPagePoint(
     v: uvFront.v,
   }
 
-  if (p <= 0.01) {
+  if (p <= 0.005) {
     return {
       pos: { x, y, z: 0 },
       normal: { x: 0, y: 0, z: 1 },
@@ -99,7 +99,7 @@ export function evaluate3DPagePoint(
             y: 0,
             z: Math.cos(t * PI),
           }
-          facing = t <= 0.5 ? 1.0 : -1.0
+          facing = -1.0
         } else {
           deformedPos = {
             x: rotX,
@@ -135,7 +135,7 @@ export function evaluate3DPagePoint(
             y: 0,
             z: Math.cos(t * PI),
           }
-          facing = t <= 0.5 ? 1.0 : -1.0
+          facing = -1.0
         } else {
           deformedPos = {
             x: rotX,
@@ -173,7 +173,7 @@ export function evaluate3DPagePoint(
             y: 0,
             z: Math.cos(t * PI),
           }
-          facing = t <= 0.5 ? 1.0 : -1.0
+          facing = -1.0
         } else {
           deformedPos = {
             x: rotX,
@@ -209,7 +209,7 @@ export function evaluate3DPagePoint(
             y: 0,
             z: Math.cos(t * PI),
           }
-          facing = t <= 0.5 ? 1.0 : -1.0
+          facing = -1.0
         } else {
           deformedPos = {
             x: rotX,
@@ -255,7 +255,7 @@ const VERTEX_SHADER = `
     vec3 pos = position;
     float p = clamp(uProgress, 0.0, 1.0);
 
-    if (p <= 0.01) {
+    if (p <= 0.005) {
       vNormalVec = vec3(0.0, 0.0, 1.0);
       vCurlZ = 0.0;
       vFacing = 1.0;
@@ -284,7 +284,6 @@ const VERTEX_SHADER = `
         float dist = (pos.x - foldX) + (pos.y * sin(angle));
 
         if (dist <= 0.0) {
-          // Região ainda plana na direita
           deformedPos.z = 0.0;
           computedNormal = vec3(0.0, 0.0, 1.0);
           facing = 1.0;
@@ -298,7 +297,7 @@ const VERTEX_SHADER = `
             deformedPos.y = rotY;
             deformedPos.z = dynamicRadius * sin(t * PI);
             computedNormal = normalize(vec3(sin(t * PI), 0.0, cos(t * PI)));
-            facing = t <= 0.5 ? 1.0 : -1.0;
+            facing = -1.0;
           } else {
             deformedPos.x = rotX;
             deformedPos.y = rotY;
@@ -313,7 +312,6 @@ const VERTEX_SHADER = `
         float dist = (foldX - pos.x) + (pos.y * sin(angle));
 
         if (dist <= 0.0) {
-          // Região ainda plana na esquerda
           deformedPos.z = 0.0;
           computedNormal = vec3(0.0, 0.0, 1.0);
           facing = 1.0;
@@ -327,7 +325,7 @@ const VERTEX_SHADER = `
             deformedPos.y = rotY;
             deformedPos.z = dynamicRadius * sin(t * PI);
             computedNormal = normalize(vec3(-sin(t * PI), 0.0, cos(t * PI)));
-            facing = t <= 0.5 ? 1.0 : -1.0;
+            facing = -1.0;
           } else {
             deformedPos.x = rotX;
             deformedPos.y = rotY;
@@ -358,7 +356,7 @@ const VERTEX_SHADER = `
             deformedPos.y = rotY;
             deformedPos.z = dynamicRadius * sin(t * PI);
             computedNormal = normalize(vec3(sin(t * PI), 0.0, cos(t * PI)));
-            facing = t <= 0.5 ? 1.0 : -1.0;
+            facing = -1.0;
           } else {
             deformedPos.x = rotX;
             deformedPos.y = rotY;
@@ -386,7 +384,7 @@ const VERTEX_SHADER = `
             deformedPos.y = rotY;
             deformedPos.z = dynamicRadius * sin(t * PI);
             computedNormal = normalize(vec3(-sin(t * PI), 0.0, cos(t * PI)));
-            facing = t <= 0.5 ? 1.0 : -1.0;
+            facing = -1.0;
           } else {
             deformedPos.x = rotX;
             deformedPos.y = rotY;
@@ -420,9 +418,9 @@ const FRAGMENT_SHADER = `
     vec3 lightDir = normalize(vec3(0.15, 0.25, 0.95));
     vec3 norm = normalize(vNormalVec);
 
-    // Select the texture per rasterized triangle. A varying face value is
-    // interpolated across vertices and can cut glyphs inside a triangle.
-    if (gl_FrontFacing) {
+    // vFacing > 0 é a folha plana estacionária na mesa (frente)
+    // vFacing <= 0 é a folha curvada e refletida (verso)
+    if (vFacing > 0.0) {
       vec4 frontTex = texture2D(uFrontTexture, vUv);
       vec3 paperBase = frontTex.rgb;
 
@@ -543,7 +541,10 @@ export function usePageCurl3D(canvasHostRef: Ref<HTMLCanvasElement | null>) {
     camera.position.z = 800
 
     if (geometry) geometry.dispose()
-    geometry = new THREE.PlaneGeometry(currentWidth, currentHeight, 48, 48)
+    // Malha de alta densidade (128 subdivisões no eixo X) garantindo que triângulos < 3px
+    const segmentsX = Math.max(128, Math.min(256, Math.round(currentWidth / 2.5)))
+    const segmentsY = Math.max(64, Math.min(128, Math.round(currentHeight / 8)))
+    geometry = new THREE.PlaneGeometry(currentWidth, currentHeight, segmentsX, segmentsY)
 
     if (isTwoPageMode) {
       if (currentDirection === 'next') {

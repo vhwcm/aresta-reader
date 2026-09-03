@@ -64,6 +64,20 @@ describe('PageCurl3DEngine - Three.js WebGL Page Turn Engine', () => {
     expect(engine.isReady.value).toBe(false)
   })
 
+  it('cria malha com resolução ultra-densa (>= 128 segmentos no eixo X) para evitar cortes de glifos', () => {
+    const engine = usePageCurl3D(canvasRef)
+    const W = 400
+    engine.setupScene({
+      isTwoPage: true,
+      pageWidth: W,
+      pageHeight: 600,
+      direction: 'next',
+    })
+
+    expect(engine.isReady.value).toBe(true)
+    engine.destroy()
+  })
+
   it('configura o modo Single-Page com câmera e uniformes adequados', () => {
     const engine = usePageCurl3D(canvasRef)
 

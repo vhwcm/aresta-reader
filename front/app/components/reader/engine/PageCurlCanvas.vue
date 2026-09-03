@@ -562,7 +562,7 @@ async function renderPageToCanvasTexture(
   }
 
   // 2. Se houver elemento visível no DOM com filhos (frente da página já visível na tela)
-  if (visibleSourceEl && visibleSourceEl.children.length > 0) {
+  if (visibleSourceEl && visibleSourceEl.children.length > 0 && doc.type !== 'epub') {
     const drawn = rasterizeElementToCanvas(
       visibleSourceEl,
       targetCanvas,
@@ -1107,6 +1107,7 @@ defineExpose({
 .page-sheet--base {
   z-index: 10;
 }
+
 
 .book-3d-webgl-canvas {
   position: absolute;
