@@ -117,6 +117,11 @@ Como $pos.x$ e $rotX$ se movem em sentidos opostos, a derivada $\frac{\partial x
   ```
 - Isso garante que $|\frac{\partial rotX}{\partial pos.x}| = 1.0$ em toda a superfície, mantendo proporção de texto, entrelinha e tamanho de glifos rigorosamente idênticos aos da página estática (100% natural, **zero zoom**).
 
+### Animação 3D Uniforme e Consistente (Sem Inclinação Diagonal)
+- Para simplificar a física, garantir consistência visual e evitar deformações cônicas ou cisalhamento diagonal do texto, a virada 3D adota **sempre o mesmo movimento canônico**, independente de onde o usuário puxa a folha (topo, centro ou base).
+- O ângulo de dobra é fixado em zero (`angle = 0.0`, com `cosA = 1.0` e `sinA = 0.0`), mantendo a dobra perfeitamente reta e paralela à lombada.
+- O gesto físico controla o avanço horizontal da página (`progress`), proporcionando uma virada suave, previsível e estável.
+
 ---
 
 ## 5. Ordem das Texturas e Páginas

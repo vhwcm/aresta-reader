@@ -54,11 +54,14 @@ describe('Mapeamento da Matriz de Pontos e Deformação 3D durante a Virada de P
       expect(midPoint.pos.z).toBeGreaterThan(0)
     })
 
-    it('ao puxar pelo canto superior (gripY = 0.0), a matriz projeta inclinação cônica diagonal', () => {
+    it('mantém animação 3D uniforme e alinhada à lombada independente do ponto de tração (gripY)', () => {
       const topCorner = evaluate3DPagePoint(W, H / 2, W, H, 0.3, 'next', true, 0.0)
-      const bottomCorner = evaluate3DPagePoint(W, -H / 2, W, H, 0.3, 'next', true, 0.0)
+      const bottomCorner = evaluate3DPagePoint(W, -H / 2, W, H, 0.3, 'next', true, 1.0)
+      const center = evaluate3DPagePoint(W, 0, W, H, 0.3, 'next', true, 0.5)
 
-      expect(topCorner.pos.x).toBeLessThan(bottomCorner.pos.x)
+      // Animação uniforme: a linha de dobra mantém o alinhamento paralelo à lombada
+      expect(topCorner.pos.x).toBeCloseTo(center.pos.x, 1)
+      expect(bottomCorner.pos.x).toBeCloseTo(center.pos.x, 1)
     })
 
     it('ao finalizar a virada (progress = 1.0), a folha está totalmente virada [-W, 0] com textura do verso ativa', () => {

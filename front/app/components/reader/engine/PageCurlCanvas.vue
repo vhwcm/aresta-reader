@@ -351,14 +351,14 @@ function getTargetPage(direction: PageTurnDirection): number {
 
 // Física de Gestos
 const physics = usePagePhysics({
-  onProgress: (progress, gripY, deltaY) => {
+  onProgress: (progress) => {
     if (!is3DActive.value) return
     pageCurl3D.updateUniforms({
       progress,
       direction: currentDirection.value,
       isTwoPage: pageLayout.value.isTwoPage,
-      gripY,
-      pointerDeltaY: deltaY,
+      gripY: 0.5,
+      pointerDeltaY: 0,
       theme: activeTheme.value as any,
     })
     pageCurl3D.render()
@@ -919,7 +919,7 @@ async function onPointerDown(event: PointerEvent) {
 
   const w = targetPageRect?.width || 400
   const h = targetPageRect?.height || 600
-  const relY = targetPageRect ? (pt.y - targetPageRect.top) / h : 0.5
+  const relY = 0.5
 
   // P1: Armazena arraste pendente — NÃO captura o pointer imediatamente.
   // Isso permite que o navegador processe seleção de texto nativa até que

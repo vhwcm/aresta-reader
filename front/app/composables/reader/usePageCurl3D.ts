@@ -40,8 +40,8 @@ export function evaluate3DPagePoint(
   progress: number,
   direction: 'next' | 'previous' = 'next',
   isTwoPage = true,
-  gripY = 0.5,
-  deltaY = 0,
+  _gripY = 0.5,
+  _deltaY = 0,
 ): MatrixSampleResult {
   const PI = Math.PI
   const p = Math.max(0, Math.min(1, progress))
@@ -71,11 +71,9 @@ export function evaluate3DPagePoint(
   const dynamicRadius = Math.max(0.0, uRadius * arcFactor)
   const rollCircumference = Math.max(1.0, PI * dynamicRadius)
 
-  const cornerBias = (0.5 - gripY) * 0.24
-  let angle = (cornerBias - deltaY * 0.12) * arcFactor
-  angle = Math.max(-0.09, Math.min(0.09, angle))
-  const cosA = Math.cos(angle)
-  const sinA = Math.sin(angle)
+  // Dobra uniforme e paralela à lombada (angle = 0.0), independente de onde o usuário puxa
+  const cosA = 1.0
+  const sinA = 0.0
 
   let deformedPos = { x, y, z: 0 }
   let computedNormal = { x: 0, y: 0, z: 1 }
@@ -275,12 +273,9 @@ const VERTEX_SHADER = `
     float dynamicRadius = max(0.0, uRadius * arcFactor);
     float rollCircumference = max(1.0, PI * dynamicRadius);
 
-    // Inclinação cônica diagonal quando puxado pelo canto, atenuada suavemente nas pontas
-    float cornerBias = (0.5 - uGripY) * 0.24;
-    float angle = (cornerBias - uPointerDeltaY * 0.12) * arcFactor;
-    angle = clamp(angle, -0.09, 0.09);
-    float cosA = cos(angle);
-    float sinA = sin(angle);
+    // Dobra uniforme e paralela à lombada (angle = 0.0), garantindo consistência em qualquer puxada
+    float cosA = 1.0;
+    float sinA = 0.0;
 
     vec3 deformedPos = pos;
     vec3 computedNormal = vec3(0.0, 0.0, 1.0);
