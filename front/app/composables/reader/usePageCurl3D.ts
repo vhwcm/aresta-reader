@@ -105,9 +105,9 @@ export function evaluate3DPagePoint(
           computedNormal = {
             x: Math.sin(t * PI),
             y: 0,
-            z: Math.cos(t * PI),
+            z: -1,
           }
-          facing = t < 0.5 ? 1.0 : -1.0
+          facing = -1.0
         } else {
           deformedPos = {
             x: rotX,
@@ -142,9 +142,9 @@ export function evaluate3DPagePoint(
           computedNormal = {
             x: -Math.sin(t * PI),
             y: 0,
-            z: Math.cos(t * PI),
+            z: -1,
           }
-          facing = t < 0.5 ? 1.0 : -1.0
+          facing = -1.0
         } else {
           deformedPos = {
             x: rotX,
@@ -181,9 +181,9 @@ export function evaluate3DPagePoint(
           computedNormal = {
             x: Math.sin(t * PI),
             y: 0,
-            z: Math.cos(t * PI),
+            z: -1,
           }
-          facing = t < 0.5 ? 1.0 : -1.0
+          facing = -1.0
         } else {
           deformedPos = {
             x: rotX,
@@ -218,9 +218,9 @@ export function evaluate3DPagePoint(
           computedNormal = {
             x: -Math.sin(t * PI),
             y: 0,
-            z: Math.cos(t * PI),
+            z: -1,
           }
-          facing = t < 0.5 ? 1.0 : -1.0
+          facing = -1.0
         } else {
           deformedPos = {
             x: rotX,
@@ -310,8 +310,8 @@ const VERTEX_SHADER = `
             deformedPos.x = mix(pos.x, rotX, arcProgress);
             deformedPos.y = mix(pos.y, rotY, arcProgress);
             deformedPos.z = max(0.5, dynamicRadius * sin(t * PI));
-            computedNormal = normalize(vec3(sin(t * PI), 0.0, cos(t * PI)));
-            facing = t < 0.5 ? 1.0 : -1.0;
+            computedNormal = normalize(vec3(sin(t * PI), 0.0, -1.0));
+            facing = -1.0;
           } else {
             deformedPos.x = rotX;
             deformedPos.y = rotY;
@@ -339,8 +339,8 @@ const VERTEX_SHADER = `
             deformedPos.x = mix(pos.x, rotX, arcProgress);
             deformedPos.y = mix(pos.y, rotY, arcProgress);
             deformedPos.z = max(0.5, dynamicRadius * sin(t * PI));
-            computedNormal = normalize(vec3(-sin(t * PI), 0.0, cos(t * PI)));
-            facing = t < 0.5 ? 1.0 : -1.0;
+            computedNormal = normalize(vec3(-sin(t * PI), 0.0, -1.0));
+            facing = -1.0;
           } else {
             deformedPos.x = rotX;
             deformedPos.y = rotY;
@@ -371,8 +371,8 @@ const VERTEX_SHADER = `
             deformedPos.x = mix(pos.x, rotX, arcProgress);
             deformedPos.y = mix(pos.y, rotY, arcProgress);
             deformedPos.z = max(0.5, dynamicRadius * sin(t * PI));
-            computedNormal = normalize(vec3(sin(t * PI), 0.0, cos(t * PI)));
-            facing = t < 0.5 ? 1.0 : -1.0;
+            computedNormal = normalize(vec3(sin(t * PI), 0.0, -1.0));
+            facing = -1.0;
           } else {
             deformedPos.x = rotX;
             deformedPos.y = rotY;
@@ -400,8 +400,8 @@ const VERTEX_SHADER = `
             deformedPos.x = mix(pos.x, rotX, arcProgress);
             deformedPos.y = mix(pos.y, rotY, arcProgress);
             deformedPos.z = max(0.5, dynamicRadius * sin(t * PI));
-            computedNormal = normalize(vec3(-sin(t * PI), 0.0, cos(t * PI)));
-            facing = t < 0.5 ? 1.0 : -1.0;
+            computedNormal = normalize(vec3(-sin(t * PI), 0.0, -1.0));
+            facing = -1.0;
           } else {
             deformedPos.x = rotX;
             deformedPos.y = rotY;

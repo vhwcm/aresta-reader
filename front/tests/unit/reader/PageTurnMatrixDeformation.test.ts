@@ -71,6 +71,17 @@ describe('Mapeamento da Matriz de Pontos e Deformação 3D durante a Virada de P
       expect(outerEdge.facing).toBe(-1.0)
       expect(outerEdge.sampledTexture).toBe('back')
     })
+
+    it('garante que nenhum ponto na região de dobra/curvatura (dist > 0) receba textura da frente, prevenindo texto espelhado', () => {
+      for (const progress of [0.1, 0.3, 0.5, 0.7, 0.9]) {
+        const foldX = W * (1.0 - progress)
+        for (let x = foldX + 5; x <= W; x += 20) {
+          const sample = evaluate3DPagePoint(x, 0, W, H, progress, 'next', true)
+          expect(sample.facing).toBe(-1.0)
+          expect(sample.sampledTexture).toBe('back')
+        }
+      }
+    })
   })
 
   describe('Modo 1 Página (Single-Page Mode)', () => {
