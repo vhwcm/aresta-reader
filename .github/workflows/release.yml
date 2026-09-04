@@ -54,9 +54,13 @@ jobs:
             exit 0
           fi
 
-          echo "$KEYSTORE_BASE64" | base64 --decode > /tmp/release.jks
+          # Sanitiza removendo espaços e quebras de linha que possam vir no secret
+          echo "$KEYSTORE_BASE64" | tr -d '[:space:]' | base64 --decode > /tmp/release.jks 2>/dev/null || echo "$KEYSTORE_BASE64" | tr -d '[:space:]' | base64 -d > /tmp/release.jks
 
-          # Encontra e assina recursivamente todos os APKs gerados
+          if [ ! -s /tmp/release.jks ]; then
+            echo "Erro: falha ao decodificar a Keystore. Verifique o secret ANDROID_KEYSTORE_BASE64."
+            exit 1
+          fi
           find front/src-tauri/gen/android/app/build/outputs/apk -type f -name "*.apk" ! -name "*-signed.apk" | while read -r apk; do
             echo "Encontrado APK para assinar: $apk"
             dir=$(dirname "$apk")
