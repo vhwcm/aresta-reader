@@ -75,12 +75,22 @@ O workflow `.github/workflows/release.yml` utiliza o `apksigner` oficial do Andr
           fi
 
           # Sanitiza removendo espaços e quebras de linha que possam vir no secret
-          echo "$KEYSTORE_BASE64" | tr -d '[:space:]' | base64 --decode > /tmp/release.jks 2>/dev/null || echo "$KEYSTORE_BASE64" | tr -d '[:space:]' | base64 -d > /tmp/release.jks
+          echo "$KEYSTORE_BASE64" | tr -d '[:space:]' | base64 --decode > /tmp/release.raw 2>/dev/null || echo "$KEYSTORE_BASE64" | tr -d '[:space:]' | base64 -d > /tmp/release.raw
 
-          if [ ! -s /tmp/release.jks ]; then
+          if [ ! -s /tmp/release.raw ]; then
             echo "Erro: falha ao decodificar a Keystore. Verifique o secret ANDROID_KEYSTORE_BASE64."
             exit 1
           fi
+
+          # Converte a keystore para o formato JKS nativo do Java 17 do runner para eliminar problemas de PKCS12
+          keytool -importkeystore \
+            -srckeystore /tmp/release.raw \
+            -srcstorepass "$KEYSTORE_PASSWORD" \
+            -destkeystore /tmp/signing.jks \
+            -deststoretype JKS \
+            -deststorepass "$KEYSTORE_PASSWORD" \
+            -destkeypass "$KEY_PASSWORD" \
+            -noprompt 2>/dev/null || cp /tmp/release.raw /tmp/signing.jks
 
           # Encontra e assina recursivamente todos os APKs gerados
           find front/src-tauri/gen/android/app/build/outputs/apk -type f -name "*.apk" ! -name "*-signed.apk" | while read -r apk; do
@@ -92,7 +102,8 @@ O workflow `.github/workflows/release.yml` utiliza o `apksigner` oficial do Andr
 
             echo "Assinando via apksigner -> $signed_apk"
             $ANDROID_HOME/build-tools/34.0.0/apksigner sign \
-              --ks /tmp/release.jks \
+              --ks /tmp/signing.jks \
+              --ks-type JKS \
               --ks-pass "pass:$KEYSTORE_PASSWORD" \
               --key-pass "pass:$KEY_PASSWORD" \
               --ks-key-alias "$KEY_ALIAS" \
@@ -106,7 +117,7 @@ O workflow `.github/workflows/release.yml` utiliza o `apksigner` oficial do Andr
             rm -f "$apk"
           done
 
-          rm -f /tmp/release.jks
+          rm -f /tmp/release.raw /tmp/signing.jks
 
       - uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
