@@ -93,7 +93,8 @@ O fluxo de trabalho depende do tamanho e impacto da alteração:
 
 ## 5. Git & Versionamento & Quality Gates
 
-- **Bloqueio Inegociável de Commits**: **NUNCA** realize `git commit` ou `git push` com Quality Gates falhando. Execute a skill `run-quality-gates` para validar Frontend (`lint`, `typecheck`, `test`) e Backend (`build`, `test`).
+- **Regra Inegociável: Verificação Obrigatória de Quality Gates**: **SEMPRE**, antes de finalizar qualquer tarefa, responder ao usuário confirmando a conclusão de um trabalho, ou realizar qualquer `git commit` / `git push`, é **MANDATÓRIO** executar e validar que todos os Quality Gates do repositório estão 100% passando (verde). Se houver qualquer falha (build, typecheck, lint ou testes), a tarefa NÃO pode ser considerada concluída; investigue, corrija a causa raiz e revalide até a aprovação completa.
+- **Bloqueio Inegociável de Commits**: **NUNCA** realize `git commit` ou `git push` com Quality Gates falhando. Valide Frontend (`lint`, `typecheck`, `test`) e Backend (`build`, `test`).
 - **Commits ao Concluir Tarefas**: Sempre que uma tarefa ou subtarefa for concluída e validada por todos os quality gates, realize o `git add` dos arquivos pertinentes e faça um `git commit`.
 - **Mensagens Descritivas**: Utilize mensagens claras e descritivas seguindo Conventional Commits (`feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `chore:`).
 - **Commits Atômicos/Menores**: Em tarefas grandes, divida as alterações em commits menores e lógicos em vez de acumular tudo em um único commit gigante.

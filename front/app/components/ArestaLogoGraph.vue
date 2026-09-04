@@ -11,8 +11,19 @@
       class="absolute inset-0 rounded-xl bg-accent/15 opacity-0 group-hover:opacity-100 blur-md transition-opacity duration-500 pointer-events-none"
     ></div>
 
+    <!-- Imagem da logo PNG oficial -->
+    <img
+      v-if="useImage"
+      :src="logoSrc"
+      alt="Aresta Logo"
+      :style="{ width: `${size}px`, height: `${size}px` }"
+      class="object-contain transition-transform duration-300 group-hover:scale-105"
+      data-testid="aresta-logo-img"
+    />
+
     <!-- SVG do Grafo Vivo formando a letra A (Laranja Vibrante Aresta) -->
     <svg
+      v-else
       :width="size"
       :height="size"
       viewBox="0 0 40 40"
@@ -101,8 +112,19 @@
       class="absolute inset-0 rounded-xl bg-accent/15 opacity-0 group-hover:opacity-100 blur-md transition-opacity duration-500 pointer-events-none"
     ></div>
 
+    <!-- Imagem da logo PNG oficial -->
+    <img
+      v-if="useImage"
+      :src="logoSrc"
+      alt="Aresta Logo"
+      :style="{ width: `${size}px`, height: `${size}px` }"
+      class="object-contain transition-transform duration-300 group-hover:scale-105"
+      data-testid="aresta-logo-img"
+    />
+
     <!-- SVG do Grafo Vivo formando a letra A (Laranja Vibrante Aresta) -->
     <svg
+      v-else
       :width="size"
       :height="size"
       viewBox="0 0 40 40"
@@ -170,11 +192,15 @@ withDefaults(
     size?: number
     title?: string
     to?: string | null
+    useImage?: boolean
+    logoSrc?: string
   }>(),
   {
     size: 36,
     title: 'Aresta - Ir para o Início',
-    to: '/'
+    to: '/',
+    useImage: false,
+    logoSrc: '/logo_aresta_sem_fundo.png',
   }
 )
 </script>

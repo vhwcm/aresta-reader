@@ -22,7 +22,7 @@
           title="Aresta - Início / Expandir Menu"
           aria-label="Aresta - Início / Expandir Menu"
         >
-          <ArestaLogoGraph :size="34" :to="null" />
+          <ArestaLogoGraph :size="34" :to="null" use-image />
         </button>
       </template>
 
@@ -130,9 +130,9 @@
           </div>
         </div>
 
-        <!-- Item 3: Logo Central (Grafo Vivo -> Home) -->
+        <!-- Item 3: Logo Central (Logo Oficial -> Home) -->
         <div class="flex items-center justify-center px-1.5">
-          <ArestaLogoGraph :size="36" />
+          <ArestaLogoGraph :size="36" use-image />
         </div>
 
         <!-- Item 4: Revisão -->

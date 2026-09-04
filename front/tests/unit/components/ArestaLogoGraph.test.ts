@@ -23,4 +23,25 @@ describe('ArestaLogoGraph Component', () => {
     expect(wrapper.find('.nodes-layer').exists()).toBe(true)
     expect(wrapper.findAll('.node-wrap').length).toBeGreaterThanOrEqual(5)
   })
+
+  it('renders official PNG image when useImage is true', () => {
+    const wrapper = mount(ArestaLogoGraph, {
+      props: {
+        size: 34,
+        useImage: true,
+      },
+      global: {
+        stubs: {
+          NuxtLink: {
+            template: '<a><slot /></a>',
+          },
+        },
+      },
+    })
+
+    const img = wrapper.find('[data-testid="aresta-logo-img"]')
+    expect(img.exists()).toBe(true)
+    expect(img.attributes('src')).toBe('/logo_aresta_sem_fundo.png')
+    expect(wrapper.find('svg').exists()).toBe(false)
+  })
 })

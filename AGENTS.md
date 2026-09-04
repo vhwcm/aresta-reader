@@ -24,10 +24,12 @@ para armazenar progresso de leitura, anotações pendentes e flashcards localmen
 - aresta-memory (:3005) — anotações, flashcards, grafo
 - aresta-ai (:3002) — tradução, sumarizar, gerar flashcards
 
-## Quality Gates
+## Regra Inegociável de Quality Gates
+É **MANDATÓRIO** e **INEGOCIÁVEL** verificar e garantir que todos os Quality Gates abaixo estejam passando (100% verde) antes de concluir qualquer tarefa ou realizar qualquer commit/push. Nunca finalize uma alteração sem validar:
 ```bash
 # Backend
 cd backend && npm run build && npm run test
 # Frontend
 cd front && npm run lint && npm run typecheck && npm run test
 ```
+
