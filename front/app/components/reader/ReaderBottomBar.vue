@@ -487,22 +487,23 @@
         </span>
       </button>
 
-      <!-- Botão Grafo de Conhecimento -->
+      <!-- Botão Notas do Livro -->
       <button
-        @click="$emit('toggleGraph')"
+        @click="handleToggleNotes"
         class="flex items-center justify-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-2 md:w-11 md:h-11 md:p-0 rounded-xl border transition-all text-xs font-semibold active:scale-95"
-        :class="isGraphActive
+        :class="isNotesActiveComputed
           ? 'bg-accent text-white border-accent shadow-sm'
           : (store.readerTheme === 'sepia'
             ? 'bg-[#f5eedc] border-[#dfd5c0] text-[#5c4d3c] hover:text-[#2a2521] hover:bg-[#EBE2CE]'
             : (store.readerTheme === 'white'
               ? 'bg-gray-100 border-gray-200 text-gray-700 hover:text-black hover:bg-gray-200'
               : 'bg-white/5 border-divider text-textSecondary hover:text-textPrimary hover:bg-white/10'))"
-        :title="isGraphActive ? 'Recolher Grafo de Conhecimento' : 'Abrir Grafo de Conhecimento'"
-        aria-label="Abrir ou fechar Grafo de Conhecimento"
+        :title="isNotesActiveComputed ? 'Recolher notas do livro' : 'Ver notas deste livro'"
+        aria-label="Abrir ou fechar notas do livro"
+        id="btn-book-notes"
       >
-        <NetworkIcon class="w-4 h-4" :class="isGraphActive ? 'text-white' : 'text-accent'" />
-        <span class="hidden sm:inline md:hidden">Grafo</span>
+        <FileTextIcon class="w-4 h-4" :class="isNotesActiveComputed ? 'text-white' : 'text-accent'" />
+        <span class="hidden sm:inline md:hidden">Notas</span>
       </button>
 
       <!-- Botão Modo Zen (Foco) -->
@@ -537,23 +538,34 @@ import {
   HighlighterIcon,
   Maximize2Icon,
   Minimize2Icon,
-  NetworkIcon,
   PaletteIcon,
   TypeIcon,
 } from 'lucide-vue-next'
 import { useReaderStore } from '~/stores/readerStore'
 
-defineProps<{
+const props = defineProps<{
+  isNotesActive?: boolean
   isGraphActive?: boolean
 }>()
 
-defineEmits<{
-  (e: 'close'): void
-  (e: 'openSavedPages'): void
-  (e: 'openAnnotation'): void
-  (e: 'toggleGraph'): void
-  (e: 'openTypography'): void
+const emit = defineEmits<{
+  (_e: 'close'): void
+  (_e: 'openSavedPages'): void
+  (_e: 'openAnnotation'): void
+  (_e: 'toggleNotes'): void
+  (_e: 'toggleGraph'): void
+  (_e: 'openTypography'): void
 }>()
+
+const isNotesActiveComputed = computed(() => {
+  if (typeof props.isNotesActive === 'boolean') return props.isNotesActive
+  return Boolean(props.isGraphActive)
+})
+
+function handleToggleNotes() {
+  emit('toggleNotes')
+  emit('toggleGraph')
+}
 
 const store = useReaderStore()
 const isAppearancePopoverOpen = ref(false)

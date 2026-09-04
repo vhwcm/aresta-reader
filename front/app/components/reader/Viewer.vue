@@ -15,11 +15,13 @@
         <!-- Barra de Ferramentas de Leitura (Esquerda no Desktop/Tablet, Inferior no Mobile) (Oculta no Modo Zen) -->
         <ReaderBottomBar
           v-if="!store.isZenMode"
-          :is-graph-active="isDesktop ? store.isGraphOpen : store.isMobileGraphOpen"
+          :is-notes-active="isDesktop ? store.isNotesOpen : store.isMobileNotesOpen"
+          :is-graph-active="isDesktop ? store.isNotesOpen : store.isMobileNotesOpen"
           @close="handleClose"
           @open-saved-pages="isSavedPagesOpen = true"
           @open-annotation="handleOpenAnnotation"
-          @toggle-graph="handleToggleGraph"
+          @toggle-notes="handleToggleNotes"
+          @toggle-graph="handleToggleNotes"
           @open-typography="isTypographyOpen = true"
         />
 
@@ -81,10 +83,10 @@
         </div>
       </section>
 
-      <!-- Painel do Grafo de Conhecimento no Desktop (Gaveta Lateral / Slide-over Drawer) -->
+      <!-- Painel de Notas do Livro no Desktop (Gaveta Lateral / Slide-over Drawer) -->
       <transition name="slide-left">
         <aside
-          v-if="store.isGraphOpen && !store.isZenMode"
+          v-if="store.isNotesOpen && !store.isZenMode"
           class="hidden lg:flex fixed inset-y-0 right-0 z-40 w-[520px] max-w-[85vw] h-full shadow-2xl flex-col border-l transition-all duration-300"
           :class="{
             'bg-[#FAF5E8] text-[#2a2521] border-[#dfd5c0]': activeTheme === 'sepia',
@@ -92,30 +94,33 @@
             'bg-[#121214] text-[#e4e4e7] border-white/10': activeTheme === 'black',
           }"
         >
-          <ReaderGraphPanel
-            ref="graphPanelRef"
+          <ReaderBookNotesPanel
+            ref="notesPanelRef"
             :is-mobile="false"
             :theme="activeTheme"
-            @close="store.setGraphOpen(false)"
+            :book-id="store.bookId"
+            :book-title="store.title"
+            @close="store.setNotesOpen(false)"
             @open-annotation-modal="handleOpenAnnotation"
+            @go-to-page="handleSelectSavedPage"
           />
         </aside>
       </transition>
 
-      <!-- Backdrop sutil para fechar o grafo ao clicar fora no desktop -->
+      <!-- Backdrop sutil para fechar o painel de notas ao clicar fora no desktop -->
       <transition name="fade">
         <div
-          v-if="store.isGraphOpen && !store.isZenMode"
+          v-if="store.isNotesOpen && !store.isZenMode"
           class="hidden lg:block fixed inset-0 bg-black/25 z-30 backdrop-blur-[1px] transition-opacity"
-          @click="store.setGraphOpen(false)"
+          @click="store.setNotesOpen(false)"
           aria-hidden="true"
         />
       </transition>
     </div>
 
-    <!-- Grafo de Conhecimento em Tela Cheia no Mobile (Oculto no Modo Zen) -->
+    <!-- Painel de Notas do Livro em Tela Cheia no Mobile (Oculto no Modo Zen) -->
     <div
-      v-if="store.isMobileGraphOpen && !store.isZenMode"
+      v-if="store.isMobileNotesOpen && !store.isZenMode"
       class="fixed inset-0 z-50 flex flex-col lg:hidden animate-fadeIn"
       :class="{
         'bg-[#f5eedc] text-[#2a2521]': activeTheme === 'sepia',
@@ -125,12 +130,15 @@
       role="dialog"
       aria-modal="true"
     >
-      <ReaderGraphPanel
-        ref="mobileGraphPanelRef"
+      <ReaderBookNotesPanel
+        ref="mobileNotesPanelRef"
         :is-mobile="true"
         :theme="activeTheme"
-        @close="store.setMobileGraphOpen(false)"
+        :book-id="store.bookId"
+        :book-title="store.title"
+        @close="store.setMobileNotesOpen(false)"
         @open-annotation-modal="handleOpenAnnotation"
+        @go-to-page="handleSelectSavedPage"
       />
     </div>
 
@@ -236,7 +244,7 @@ import ReaderBottomBar from '~/components/reader/ReaderBottomBar.vue'
 import ReaderSavedPagesModal from '~/components/reader/ReaderSavedPagesModal.vue'
 import ReaderAnnotationModal from '~/components/reader/ReaderAnnotationModal.vue'
 import ReaderAnnotationDrawer from '~/components/reader/ReaderAnnotationDrawer.vue'
-import ReaderGraphPanel from '~/components/reader/ReaderGraphPanel.vue'
+import ReaderBookNotesPanel from '~/components/reader/ReaderBookNotesPanel.vue'
 import ReaderSelectionTooltip from '~/components/reader/ReaderSelectionTooltip.vue'
 import ReaderDictionaryCard from '~/components/reader/ReaderDictionaryCard.vue'
 import ReaderTypographyPopover from '~/components/reader/ReaderTypographyPopover.vue'
@@ -289,8 +297,8 @@ const bookDetectedLanguage = computed(() => {
   return doc?.metadata?.language || 'en'
 })
 
-const graphPanelRef = ref<any>(null)
-const mobileGraphPanelRef = ref<any>(null)
+const notesPanelRef = ref<any>(null)
+const mobileNotesPanelRef = ref<any>(null)
 
 interface PageRenderer {
   next: () => Promise<void>
@@ -317,11 +325,11 @@ function exitZenMode() {
   }
 }
 
-function handleToggleGraph() {
+function handleToggleNotes() {
   if (typeof window !== 'undefined' && window.innerWidth < 1024) {
-    store.toggleMobileGraph()
+    store.toggleMobileNotes()
   } else {
-    store.toggleGraph()
+    store.toggleNotes()
   }
 }
 
@@ -479,8 +487,8 @@ function handleTouchEnd() {
 }
 
 function handleAnnotationCreated() {
-  graphPanelRef.value?.refresh?.()
-  mobileGraphPanelRef.value?.refresh?.()
+  notesPanelRef.value?.refresh?.()
+  mobileNotesPanelRef.value?.refresh?.()
 }
 
 function updateDeviceType() {
@@ -494,8 +502,8 @@ function updateDeviceType() {
     } else {
       hasSpace = window.innerWidth >= 1024
     }
-    const isGraphShowing = store.isGraphOpen && !store.isZenMode
-    const shouldBeTwoPage = isDesktop.value && !isGraphShowing && hasSpace && store.totalPages > 1
+    const isNotesShowing = (store.isNotesOpen || store.isGraphOpen) && !store.isZenMode
+    const shouldBeTwoPage = isDesktop.value && !isNotesShowing && hasSpace && store.totalPages > 1
     store.setTwoPageMode(shouldBeTwoPage)
   }
 }
@@ -508,7 +516,7 @@ function onPopState() {
 }
 
 watch(
-  [() => store.isGraphOpen, () => store.totalPages],
+  [() => store.isNotesOpen, () => store.isGraphOpen, () => store.totalPages],
   () => {
     updateDeviceType()
   },
@@ -569,12 +577,12 @@ function onKeyDown(event: KeyboardEvent) {
       isTypographyOpen.value = false
       return
     }
-    if (store.isGraphOpen) {
-      store.setGraphOpen(false)
+    if (store.isNotesOpen || store.isGraphOpen) {
+      store.setNotesOpen(false)
       return
     }
-    if (store.isMobileGraphOpen) {
-      store.setMobileGraphOpen(false)
+    if (store.isMobileNotesOpen || store.isMobileGraphOpen) {
+      store.setMobileNotesOpen(false)
       return
     }
     if (store.isZenMode) {

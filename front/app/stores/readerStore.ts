@@ -13,6 +13,8 @@ interface ReaderState {
   error: string | null
   fileName: string | null
   bookmarks: number[]
+  isNotesOpen: boolean
+  isMobileNotesOpen: boolean
   isGraphOpen: boolean
   isMobileGraphOpen: boolean
   isTwoPageMode: boolean
@@ -90,6 +92,8 @@ export const useReaderStore = defineStore('reader', {
       error: null,
       fileName: null,
       bookmarks: [],
+      isNotesOpen: defaultGraphOpen,
+      isMobileNotesOpen: false,
       isGraphOpen: defaultGraphOpen,
       isMobileGraphOpen: false,
       isTwoPageMode: defaultTwoPageMode,
@@ -328,20 +332,40 @@ export const useReaderStore = defineStore('reader', {
       this.saveBookmarks()
     },
 
-    toggleGraph() {
-      this.isGraphOpen = !this.isGraphOpen
+    toggleNotes() {
+      this.isNotesOpen = !this.isNotesOpen
+      this.isGraphOpen = this.isNotesOpen
     },
 
-    setGraphOpen(open: boolean) {
+    setNotesOpen(open: boolean) {
+      this.isNotesOpen = open
       this.isGraphOpen = open
     },
 
+    toggleMobileNotes() {
+      this.isMobileNotesOpen = !this.isMobileNotesOpen
+      this.isMobileGraphOpen = this.isMobileNotesOpen
+    },
+
+    setMobileNotesOpen(open: boolean) {
+      this.isMobileNotesOpen = open
+      this.isMobileGraphOpen = open
+    },
+
+    toggleGraph() {
+      this.toggleNotes()
+    },
+
+    setGraphOpen(open: boolean) {
+      this.setNotesOpen(open)
+    },
+
     toggleMobileGraph() {
-      this.isMobileGraphOpen = !this.isMobileGraphOpen
+      this.toggleMobileNotes()
     },
 
     setMobileGraphOpen(open: boolean) {
-      this.isMobileGraphOpen = open
+      this.setMobileNotesOpen(open)
     },
 
     setTwoPageMode(isTwoPage: boolean) {
@@ -463,6 +487,8 @@ export const useReaderStore = defineStore('reader', {
       this.error = null
       this.fileName = null
       this.bookmarks = []
+      this.isNotesOpen = false
+      this.isMobileNotesOpen = false
       this.isGraphOpen = false
       this.isMobileGraphOpen = false
       this.isZenMode = false

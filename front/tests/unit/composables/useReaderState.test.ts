@@ -207,12 +207,22 @@ describe('useReaderStore', () => {
       expect(store.savedPages).toEqual([3])
     })
 
-    it('alterna visualização do grafo', () => {
+    it('alterna visualização do grafo e notas do livro', () => {
       const store = useReaderStore()
+      expect(store.isNotesOpen).toBe(false)
       expect(store.isGraphOpen).toBe(false)
-      store.toggleGraph()
+      store.toggleNotes()
+      expect(store.isNotesOpen).toBe(true)
       expect(store.isGraphOpen).toBe(true)
+      store.toggleNotes()
+      expect(store.isNotesOpen).toBe(false)
+      expect(store.isGraphOpen).toBe(false)
+
       store.toggleGraph()
+      expect(store.isNotesOpen).toBe(true)
+      expect(store.isGraphOpen).toBe(true)
+      store.setNotesOpen(false)
+      expect(store.isNotesOpen).toBe(false)
       expect(store.isGraphOpen).toBe(false)
     })
 
@@ -234,10 +244,19 @@ describe('useReaderStore', () => {
       expect(store.readerWidthMode).toBe('centered')
     })
 
-    it('alterna grafo mobile', () => {
+    it('alterna grafo e notas mobile', () => {
       const store = useReaderStore()
+      expect(store.isMobileNotesOpen).toBe(false)
       expect(store.isMobileGraphOpen).toBe(false)
+      store.toggleMobileNotes()
+      expect(store.isMobileNotesOpen).toBe(true)
+      expect(store.isMobileGraphOpen).toBe(true)
+      store.setMobileNotesOpen(false)
+      expect(store.isMobileNotesOpen).toBe(false)
+      expect(store.isMobileGraphOpen).toBe(false)
+
       store.toggleMobileGraph()
+      expect(store.isMobileNotesOpen).toBe(true)
       expect(store.isMobileGraphOpen).toBe(true)
     })
   })

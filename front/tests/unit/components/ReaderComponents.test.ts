@@ -102,9 +102,11 @@ describe('Reader Components', () => {
       await savedPagesBtn.trigger('click')
       expect(wrapper.emitted('openSavedPages')).toBeTruthy()
 
-      // Botão Grafo
-      const graphBtn = wrapper.find('button[aria-label="Abrir ou fechar Grafo de Conhecimento"]')
-      await graphBtn.trigger('click')
+      // Botão Notas do Livro
+      const notesBtn = wrapper.find('button[aria-label="Abrir ou fechar notas do livro"]')
+      expect(notesBtn.exists()).toBe(true)
+      await notesBtn.trigger('click')
+      expect(wrapper.emitted('toggleNotes')).toBeTruthy()
       expect(wrapper.emitted('toggleGraph')).toBeTruthy()
     })
 
@@ -567,6 +569,7 @@ describe('Reader Components', () => {
         global: {
           stubs: {
             ReaderEnginePageCurlCanvas: true,
+            ReaderBookNotesPanel: true,
             ReaderGraphPanel: true,
             ReaderBottomBar: true,
             ReaderSavedPagesModal: true,
@@ -605,6 +608,7 @@ describe('Reader Components', () => {
         global: {
           stubs: {
             ReaderEnginePageCurlCanvas: true,
+            ReaderBookNotesPanel: true,
             ReaderGraphPanel: true,
             ReaderBottomBar: true,
             ReaderSavedPagesModal: true,
@@ -636,6 +640,7 @@ describe('Reader Components', () => {
         global: {
           stubs: {
             ReaderEnginePageCurlCanvas: true,
+            ReaderBookNotesPanel: true,
             ReaderGraphPanel: true,
             ReaderBottomBar: true,
             ReaderSavedPagesModal: true,
