@@ -9,3 +9,7 @@ backend/dist/
 backend/node_modules/
 backend/prisma/migrations/
 front/src-tauri/target/
+*.jks
+*.keystore
+keystore_base64.txt
+keystore.properties

@@ -42,6 +42,24 @@ jobs:
           if [ ! -d "src-tauri/gen/android" ]; then npx tauri android init; fi
           if [ -f "src-tauri/gen/android/gradlew" ]; then chmod +x src-tauri/gen/android/gradlew; fi
           npx tauri android build --apk
+      - name: Sign Android APK
+        uses: r0adkll/sign-android-release@v1
+        id: sign_app
+        if: ${{ env.KEYSTORE_AVAILABLE != '' }}
+        env:
+          KEYSTORE_AVAILABLE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        with:
+          releaseDirectory: front/src-tauri/gen/android/app/build/outputs/apk
+          signingKeyBase64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          alias: ${{ secrets.ANDROID_KEY_ALIAS }}
+          keyStorePassword: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      - name: Prepare APKs for Release
+        run: |
+          # Se houver APKs assinados, remove os unsigned para não confundir o usuário no download
+          if ls front/src-tauri/gen/android/app/build/outputs/apk/**/*-signed.apk 1> /dev/null 2>&1; then
+            find front/src-tauri/gen/android/app/build/outputs/apk -name "*-unsigned.apk" -type f -delete
+          fi
       - uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
         with:
