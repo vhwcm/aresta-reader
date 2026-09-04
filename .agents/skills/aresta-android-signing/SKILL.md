@@ -59,35 +59,48 @@ No repositório do GitHub (**Settings > Secrets and variables > Actions**), cada
 
 ## 4. Pipeline de Assinatura Automatizada no GitHub Actions
 
-O workflow `.github/workflows/release.yml` compila o APK via Tauri v2 e aplica a assinatura logo em seguida com `r0adkll/sign-android-release@v1`:
+O workflow `.github/workflows/release.yml` utiliza o `apksigner` oficial do Android SDK (já fornecido via `build-tools;34.0.0`) para realizar a busca recursiva e assinatura dos APKs, eliminando incompatibilidades com subdiretórios (`universal/release/`) e avisos de versão de runtime do Node:
 
 ```yaml
-      - name: Build Android APK
-        working-directory: ./front
-        run: |
-          if [ ! -d "src-tauri/gen/android" ]; then npx tauri android init; fi
-          if [ -f "src-tauri/gen/android/gradlew" ]; then chmod +x src-tauri/gen/android/gradlew; fi
-          npx tauri android build --apk
-
       - name: Sign Android APK
-        uses: r0adkll/sign-android-release@v1
-        id: sign_app
-        if: ${{ env.KEYSTORE_AVAILABLE != '' }}
         env:
-          KEYSTORE_AVAILABLE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-        with:
-          releaseDirectory: front/src-tauri/gen/android/app/build/outputs/apk
-          signingKeyBase64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          alias: ${{ secrets.ANDROID_KEY_ALIAS }}
-          keyStorePassword: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
-
-      - name: Prepare APKs for Release
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          # Se houver APKs assinados, remove os unsigned para evitar download incorreto
-          if ls front/src-tauri/gen/android/app/build/outputs/apk/**/*-signed.apk 1> /dev/null 2>&1; then
-            find front/src-tauri/gen/android/app/build/outputs/apk -name "*-unsigned.apk" -type f -delete
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "Aviso: ANDROID_KEYSTORE_BASE64 não configurado, pulando assinatura."
+            exit 0
           fi
+
+          echo "$KEYSTORE_BASE64" | base64 --decode > /tmp/release.jks
+
+          # Encontra e assina recursivamente todos os APKs gerados
+          find front/src-tauri/gen/android/app/build/outputs/apk -type f -name "*.apk" ! -name "*-signed.apk" | while read -r apk; do
+            echo "Encontrado APK para assinar: $apk"
+            dir=$(dirname "$apk")
+            base=$(basename "$apk" .apk)
+            clean_base=$(echo "$base" | sed 's/-unsigned$//')
+            signed_apk="$dir/${clean_base}-signed.apk"
+
+            echo "Assinando via apksigner -> $signed_apk"
+            $ANDROID_HOME/build-tools/34.0.0/apksigner sign \
+              --ks /tmp/release.jks \
+              --ks-pass "pass:$KEYSTORE_PASSWORD" \
+              --key-pass "pass:$KEY_PASSWORD" \
+              --ks-key-alias "$KEY_ALIAS" \
+              --out "$signed_apk" \
+              "$apk"
+
+            echo "Validando integridade da assinatura:"
+            $ANDROID_HOME/build-tools/34.0.0/apksigner verify --verbose "$signed_apk"
+
+            # Remove o APK não assinado para que apenas o assinado seja publicado
+            rm -f "$apk"
+          done
+
+          rm -f /tmp/release.jks
 
       - uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
