@@ -284,14 +284,8 @@ onUnmounted(() => {
 }
 
 .nav-item:hover {
-  color: var(--text-primary, #18191B);
-  background-color: rgba(0, 0, 0, 0.05);
-}
-
-:global([data-theme="dark"]) .nav-item:hover,
-:global(.dark-theme) .nav-item:hover {
-  color: #f2f2f2;
-  background-color: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary);
+  background-color: rgba(125, 125, 125, 0.08);
 }
 
 .nav-item-active {
@@ -299,13 +293,5 @@ onUnmounted(() => {
   background-color: rgba(229, 123, 85, 0.12);
   border: 1px solid rgba(229, 123, 85, 0.3);
   box-shadow: 0 0 12px rgba(229, 123, 85, 0.15);
-}
-
-:global([data-theme="dark"]) .nav-item-active,
-:global(.dark-theme) .nav-item-active {
-  color: #ffffff;
-  background-color: rgba(229, 123, 85, 0.15);
-  border: 1px solid rgba(229, 123, 85, 0.35);
-  box-shadow: 0 0 12px rgba(229, 123, 85, 0.2);
 }
 </style>

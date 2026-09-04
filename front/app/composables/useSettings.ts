@@ -88,7 +88,7 @@ const settings = reactive<SettingsState>({
   desktopReaderGraphOpen: false,
   readerTwoPageMode: true,
   readerWidthMode: 'centered',
-  readerTheme: 'white',
+  readerTheme: 'sepia',
 })
 
 let isInitialized = false
@@ -106,7 +106,7 @@ export function resetSettingsForTesting() {
   settings.desktopReaderGraphOpen = false
   settings.readerTwoPageMode = true
   settings.readerWidthMode = 'centered'
-  settings.readerTheme = 'white'
+  settings.readerTheme = 'sepia'
   isInitialized = false
 }
 
@@ -122,6 +122,7 @@ export function applyTheme(mode: ThemeMode) {
     root.classList.add('dark')
   }
   if (body) {
+    body.setAttribute('data-theme', mode)
     body.classList.remove('light-theme', 'dark-theme', 'sepia-theme', 'dark')
     body.classList.add(`${mode}-theme`)
     if (mode === 'dark') {
@@ -163,10 +164,9 @@ function initSettings() {
       }
       if (parsed.themeMode === 'dark' || parsed.themeMode === 'light' || parsed.themeMode === 'sepia') {
         settings.themeMode = parsed.themeMode
-        settings.readerTheme = themeModeToReaderTheme(parsed.themeMode)
-      } else if (parsed.readerTheme === 'white' || parsed.readerTheme === 'sepia' || parsed.readerTheme === 'black') {
+      }
+      if (parsed.readerTheme === 'white' || parsed.readerTheme === 'sepia' || parsed.readerTheme === 'black') {
         settings.readerTheme = parsed.readerTheme
-        settings.themeMode = readerThemeToThemeMode(parsed.readerTheme)
       }
       if (typeof parsed.desktopHomeGraphOpen === 'boolean') {
         settings.desktopHomeGraphOpen = parsed.desktopHomeGraphOpen
@@ -248,10 +248,9 @@ function applyServerSettings(data: UserSettingsResponse) {
   }
   if (data.themeMode === 'dark' || data.themeMode === 'light' || data.themeMode === 'sepia') {
     settings.themeMode = data.themeMode
-    settings.readerTheme = themeModeToReaderTheme(data.themeMode)
-  } else if (data.readerTheme === 'white' || data.readerTheme === 'sepia' || data.readerTheme === 'black') {
+  }
+  if (data.readerTheme === 'white' || data.readerTheme === 'sepia' || data.readerTheme === 'black') {
     settings.readerTheme = data.readerTheme
-    settings.themeMode = readerThemeToThemeMode(data.readerTheme)
   }
   if (typeof data.desktopHomeGraphOpen === 'boolean') {
     settings.desktopHomeGraphOpen = data.desktopHomeGraphOpen
@@ -305,6 +304,7 @@ export function useSettings() {
           epubFontSize: settings.epubFontSize,
           epubFontFamily: settings.epubFontFamily,
           themeMode: settings.themeMode,
+          readerTheme: settings.readerTheme,
           desktopHomeGraphOpen: settings.desktopHomeGraphOpen,
           desktopReaderGraphOpen: settings.desktopReaderGraphOpen,
         },

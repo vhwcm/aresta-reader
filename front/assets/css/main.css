@@ -3,6 +3,56 @@
 @tailwind utilities;
 
 /* ==========================================================================
+   Design Tokens dos Temas (Escuro, Claro, Sépia / Estilo Livro)
+   ========================================================================== */
+
+:root,
+[data-theme="dark"],
+.dark-theme {
+  --bg-app: #0A0A0B;
+  --bg-panel: #121315;
+  --text-primary: #F2F2F2;
+  --text-secondary: #7A7D84;
+  --divider: rgba(255, 255, 255, 0.08);
+  --accent: #E57B55;
+  --color-border: rgba(255, 255, 255, 0.12);
+  --color-text-primary: #F2F2F2;
+  --color-text-secondary: #7A7D84;
+  --color-accent: #E57B55;
+  color-scheme: dark;
+}
+
+[data-theme="light"],
+.light-theme {
+  --bg-app: #F8F9FA;
+  --bg-panel: #FFFFFF;
+  --text-primary: #18191B;
+  --text-secondary: #6B7280;
+  --divider: rgba(0, 0, 0, 0.08);
+  --accent: #E57B55;
+  --color-border: rgba(0, 0, 0, 0.1);
+  --color-text-primary: #18191B;
+  --color-text-secondary: #6B7280;
+  --color-accent: #E57B55;
+  color-scheme: light;
+}
+
+[data-theme="sepia"],
+.sepia-theme {
+  --bg-app: #F5EEDC;
+  --bg-panel: #EFE6D1;
+  --text-primary: #2A2521;
+  --text-secondary: #786C5E;
+  --divider: rgba(120, 108, 94, 0.2);
+  --accent: #C96538;
+  --color-border: rgba(120, 108, 94, 0.22);
+  --color-text-primary: #2A2521;
+  --color-text-secondary: #786C5E;
+  --color-accent: #C96538;
+  color-scheme: light;
+}
+
+/* ==========================================================================
    Estilos dos Livretos Didáticos com IA (Callouts & Mermaid)
    ========================================================================== */
 

@@ -377,6 +377,7 @@ const physics = usePagePhysics({
     is3DActive.value = false
     animationLayout.value = null
     emit('transition-state', false)
+    lastTurnTriggerTime = performance.now()
 
     // P3: Processa virada pendente da fila (cliques rápidos em sequência)
     if (pendingTurnDirection !== null) {
@@ -391,6 +392,7 @@ const physics = usePagePhysics({
     is3DActive.value = false
     animationLayout.value = null
     emit('transition-state', false)
+    lastTurnTriggerTime = performance.now()
 
     // P3: Processa virada pendente da fila mesmo após cancelamento
     if (pendingTurnDirection !== null) {

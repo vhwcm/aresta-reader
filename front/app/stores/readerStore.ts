@@ -61,9 +61,7 @@ export const useReaderStore = defineStore('reader', {
           if (typeof parsed.epubFontSize === 'number') {
             defaultFontSize = Math.max(12, Math.min(36, Math.round(parsed.epubFontSize)))
           }
-          if (parsed.themeMode === 'dark' || parsed.themeMode === 'light' || parsed.themeMode === 'sepia') {
-            defaultReaderTheme = parsed.themeMode === 'sepia' ? 'sepia' : (parsed.themeMode === 'light' ? 'white' : 'black')
-          } else if (parsed.readerTheme === 'white' || parsed.readerTheme === 'sepia' || parsed.readerTheme === 'black') {
+          if (parsed.readerTheme === 'white' || parsed.readerTheme === 'sepia' || parsed.readerTheme === 'black') {
             defaultReaderTheme = parsed.readerTheme
           }
           if (parsed.epubFontFamily) {
@@ -142,9 +140,7 @@ export const useReaderStore = defineStore('reader', {
               this.document.setFontSize(parsedSize, this.currentPage)
             }
           }
-          if (parsed.themeMode === 'dark' || parsed.themeMode === 'light' || parsed.themeMode === 'sepia') {
-            this.readerTheme = parsed.themeMode === 'sepia' ? 'sepia' : (parsed.themeMode === 'light' ? 'white' : 'black')
-          } else if (parsed.readerTheme === 'white' || parsed.readerTheme === 'sepia' || parsed.readerTheme === 'black') {
+          if (parsed.readerTheme === 'white' || parsed.readerTheme === 'sepia' || parsed.readerTheme === 'black') {
             this.readerTheme = parsed.readerTheme
           }
           if (parsed.epubFontFamily) {
