@@ -11,5 +11,6 @@ backend/prisma/migrations/
 front/src-tauri/target/
 *.jks
 *.keystore
+!front/src-tauri/release.keystore
 keystore_base64.txt
 keystore.properties

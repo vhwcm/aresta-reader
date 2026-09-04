@@ -43,36 +43,22 @@ jobs:
           if [ -f "src-tauri/gen/android/gradlew" ]; then chmod +x src-tauri/gen/android/gradlew; fi
           npx tauri android build --apk
       - name: Sign Android APK
+        working-directory: ./front
         env:
-          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD || 'arestaReader2026KeyPass' }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS || 'aresta-reader' }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD || 'arestaReader2026KeyPass' }}
         run: |
-          if [ -z "$KEYSTORE_BASE64" ]; then
-            echo "Aviso: ANDROID_KEYSTORE_BASE64 não configurado, pulando assinatura."
-            exit 0
-          fi
-
-          # Sanitiza removendo espaços e quebras de linha que possam vir no secret
-          echo "$KEYSTORE_BASE64" | tr -d '[:space:]' | base64 --decode > /tmp/release.raw 2>/dev/null || echo "$KEYSTORE_BASE64" | tr -d '[:space:]' | base64 -d > /tmp/release.raw
-
-          if [ ! -s /tmp/release.raw ]; then
-            echo "Erro: falha ao decodificar a Keystore. Verifique o secret ANDROID_KEYSTORE_BASE64."
+          KEYSTORE_FILE="src-tauri/release.keystore"
+          if [ ! -f "$KEYSTORE_FILE" ]; then
+            echo "Erro: Keystore $KEYSTORE_FILE não encontrada em $(pwd)"
             exit 1
           fi
 
-          # Converte a keystore para o formato JKS nativo do Java 17 do runner para eliminar problemas de PKCS12
-          keytool -importkeystore \
-            -srckeystore /tmp/release.raw \
-            -srcstorepass "$KEYSTORE_PASSWORD" \
-            -destkeystore /tmp/signing.jks \
-            -deststoretype JKS \
-            -deststorepass "$KEYSTORE_PASSWORD" \
-            -destkeypass "$KEY_PASSWORD" \
-            -noprompt 2>/dev/null || cp /tmp/release.raw /tmp/signing.jks
+          echo "Utilizando Keystore JKS: $KEYSTORE_FILE"
 
-          find front/src-tauri/gen/android/app/build/outputs/apk -type f -name "*.apk" ! -name "*-signed.apk" | while read -r apk; do
+          # Encontra e assina recursivamente todos os APKs gerados
+          find src-tauri/gen/android/app/build/outputs/apk -type f -name "*.apk" ! -name "*-signed.apk" | while read -r apk; do
             echo "Encontrado APK para assinar: $apk"
             dir=$(dirname "$apk")
             base=$(basename "$apk" .apk)
@@ -81,7 +67,7 @@ jobs:
 
             echo "Assinando via apksigner -> $signed_apk"
             $ANDROID_HOME/build-tools/34.0.0/apksigner sign \
-              --ks /tmp/signing.jks \
+              --ks "$KEYSTORE_FILE" \
               --ks-type JKS \
               --ks-pass "pass:$KEYSTORE_PASSWORD" \
               --key-pass "pass:$KEY_PASSWORD" \
@@ -95,8 +81,6 @@ jobs:
             # Remove o APK não assinado para que apenas o assinado seja publicado
             rm -f "$apk"
           done
-
-          rm -f /tmp/release.raw /tmp/signing.jks
       - uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
         with:
